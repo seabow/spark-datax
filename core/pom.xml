@@ -33,6 +33,10 @@
             <artifactId>spark-datax-common</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <dependency>
+            <groupId>org.scalatest</groupId>
+            <artifactId>scalatest_${scala.version.major}</artifactId>
+        </dependency>
     </dependencies>
 
     <build>

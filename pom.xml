@@ -21,5 +21,15 @@
         <scala.version.minor>2.12.10</scala.version.minor>
         <hadoop.version>3.2.2</hadoop.version>
     </properties>
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.scalatest</groupId>
+                <artifactId>scalatest_${scala.version.major}</artifactId>
+                <version>3.2.10</version>
+                <scope>test</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
 </project>

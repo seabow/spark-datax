@@ -22,10 +22,13 @@ class FileConnector extends Connector with Logging{
     val schema=ConfigUtils.getString(config,FileConnectorConfig.schema)
 
     /*读取数据源表*/
-    var dfReader = spark.read.format(format).options(options)
+    var dfReader = spark.read.options(options)
     if(!schema.isEmpty)
     {
       dfReader= dfReader.schema(schema)
+    }
+    if(format.nonEmpty){
+      dfReader=dfReader.format(format)
     }
     dfReader.load(path)
   }
@@ -39,9 +42,13 @@ class FileConnector extends Connector with Logging{
 
     df.printSchema()
     println(df.schema.toDDL)
+    var dfWriter=df.write.mode(writeMode).options(options)
+    if(format.nonEmpty){
+      dfWriter=dfWriter.format(format)
+    }
 
     try {
-      df.write.mode(writeMode).options(options).format(format).save(path)
+      dfWriter.save(path)
     } catch {
       case t: Throwable =>
         log.error("write df failed", t)
