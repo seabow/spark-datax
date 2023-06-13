@@ -61,9 +61,8 @@ class SimpleSmokeTest extends  AnyFunSuite with BeforeAndAfterAll with SparkSess
 
    test("read and write"){
      val confPath="core/src/test/conf/test_read_and_write.conf"
-     val confContnet=scala.io.Source.fromFile(confPath,"utf8")
-     val config=confContnet.mkString
-     println(config)
-     Job(config,spark=spark).execute()
+     val confContent=getConfContentFromPath(confPath)
+     println(confContent)
+     Job(confContent,spark=spark).execute()
    }
 }

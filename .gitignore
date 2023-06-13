@@ -30,10 +30,13 @@ target/
 build/
 !**/src/main/**/build/
 !**/src/test/**/build/
-test_data/
 
 ### VS Code ###
 .vscode/
 
 ### Mac OS ###
 .DS_Store
+
+### test data ###
+test_data/
+datax/

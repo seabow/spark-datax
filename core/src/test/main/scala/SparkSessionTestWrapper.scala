@@ -14,4 +14,9 @@ trait SparkSessionTestWrapper {
       .config("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
       .getOrCreate()
   }
+
+  def getConfContentFromPath(confPath:String):String ={
+    val confContnet=scala.io.Source.fromFile(confPath,"utf8")
+    confContnet.mkString
+  }
 }
