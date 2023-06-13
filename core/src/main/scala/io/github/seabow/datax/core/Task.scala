@@ -1,6 +1,6 @@
 package io.github.seabow.datax.core
 import com.typesafe.config.Config
-import io.github.seabow.datax.common.ConfigUtils
+import io.github.seabow.datax.common.ConfigUtils._
 import io.github.seabow.datax.core.pipeline.{Connector, Processor}
 import org.apache.spark.datax.utils.ClassLoaderUtils
 import org.apache.spark.internal.Logging
@@ -47,7 +47,7 @@ case class Task(config:Config,job: Job) extends Logging{
         connector.init(config)
         connector.write(job.outputMap(config.getString("name")))
       case "processor"=>
-        val input = ConfigUtils.getString(config, "input")
+        val input = config.getString( "input")
         val dfList = new ListBuffer[DataFrame]
         if(input.nonEmpty){
           val inputList = input.split(",")
@@ -65,24 +65,24 @@ case class Task(config:Config,job: Job) extends Logging{
   def dealWithCommonConfig():Unit={
     var outputDF=job.outputMap(config.getString("name"))
     //filter
-    val filter=ConfigUtils.getString(config,CommonConfig.filter,"")
+    val filter=config.getString(CommonConfig.filter,"")
     if(!filter.isEmpty){
       outputDF=outputDF.filter(filter)
     }
 
-    val limit=ConfigUtils.getInt(config,CommonConfig.limit)
+    val limit=config.getInt(CommonConfig.limit)
     if(limit !=0){
       outputDF=outputDF.limit(limit)
     }
 
     //select_exprs
-    val selectExprs=ConfigUtils.getString(config,CommonConfig.select_exprs,"")
+    val selectExprs=config.getString(CommonConfig.select_exprs,"")
     if(!selectExprs.isEmpty){
       outputDF= outputDF.selectExpr(selectExprs.split(","):_*)
     }
 
     //with_cols
-    val withCols=ConfigUtils.getStringMap(config,CommonConfig.with_cols)
+    val withCols=config.getStringMap(CommonConfig.with_cols)
     if(!withCols.isEmpty){
       withCols.foreach{
         w=>
@@ -91,7 +91,7 @@ case class Task(config:Config,job: Job) extends Logging{
     }
 
     //cols_rename
-    val cols_rename=ConfigUtils.getStringMap(config,CommonConfig.cols_rename)
+    val cols_rename=config.getStringMap(CommonConfig.cols_rename)
     if(!cols_rename.isEmpty){
       cols_rename.foreach{
         c=>
@@ -100,14 +100,14 @@ case class Task(config:Config,job: Job) extends Logging{
     }
 
     //drop_cols
-    val drop_cols=ConfigUtils.getString(config,CommonConfig.drop_cols,"")
+    val drop_cols=config.getString(CommonConfig.drop_cols,"")
     if(!drop_cols.isEmpty){
       outputDF=outputDF.drop(drop_cols.split(","):_*)
     }
 
     //repartition and coalesce
-    val repartition=ConfigUtils.getInt(config,CommonConfig.repartition,-1)
-    val coalesce=ConfigUtils.getInt(config,CommonConfig.coalesce,-1)
+    val repartition=config.getInt(CommonConfig.repartition,-1)
+    val coalesce=config.getInt(CommonConfig.coalesce,-1)
 
     if(repartition>0){
       outputDF=outputDF.repartition(repartition)

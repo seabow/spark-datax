@@ -1,85 +1,11 @@
 package io.github.seabow.datax.common
 
 import com.typesafe.config._
+
 import scala.collection.JavaConverters._
 import scala.collection.mutable
 
 object ConfigUtils {
-  /*获取字符串*/
-  def getString(config: Config, key: String, defaultValue: String): String = {
-    if (config.hasPath(key)) config.getString(key) else defaultValue
-  }
-
-  def getString(config: Config, key: String): String = {
-    getString(config, key, "")
-  }
-
-  /*获取布尔值*/
-  def getBoolean(config: Config, key: String, defaultValue: Boolean): Boolean = {
-    if (config.hasPath(key)) config.getBoolean(key) else defaultValue
-  }
-
-  def getBoolean(config: Config, key: String): Boolean = {
-    getBoolean(config, key, false)
-  }
-
-  /*获取整型数值*/
-  def getInt(config: Config, key: String, defaultValue: Int): Int = {
-    if (config.hasPath(key)) config.getInt(key) else defaultValue
-  }
-
-  def getInt(config: Config, key: String): Int = {
-    getInt(config, key, 0)
-  }
-
-  def getElement[T](config: Config, key: String): T = {
-    key match {
-      case key if (config.hasPath(key)) => config.getAnyRef(key).asInstanceOf[T]
-    }
-  }
-
-  /*取String List*/
-  def getStringList(config: Config, key: String): List[String] = {
-    key match {
-      case x if config.hasPath(x) => config.getStringList(x).asScala.toList
-      case _ => Nil
-    }
-  }
-
-  /*获取mutable.Map[String, String]*/
-  def getStringMap(config: Config, key: String): mutable.Map[String, String] = {
-    val map = new mutable.LinkedHashMap[String, String]
-    if (config.hasPath(key)) {
-      config.getConfig(key)
-        .entrySet()
-        .asScala
-        .foreach(entry => {
-          map.put(entry.getKey, entry.getValue.unwrapped().toString)
-        })
-    }
-    map
-  }
-
-  /*获取 Map[String, List[String]]*/
-  def getListMap(config: Config, key: String): Map[String, List[String]] = {
-    var map = Map.empty[String, List[String]]
-    key match {
-      case x if config.hasPath(x) => {
-        config.getConfig(key).
-          entrySet().asScala.
-          foreach(entry => {
-            val key = entry.getKey
-            val value = entry.getValue.atKey(key).getStringList(key).asScala.toList
-            if (value.nonEmpty) {
-              map += key -> entry.getValue.atKey(key).getStringList(key).asScala.toList
-            }
-          })
-      }
-      case _ => return map
-    }
-    map
-  }
-
   /**
    * 解析自定义变量参数
    *
@@ -150,4 +76,81 @@ object ConfigUtils {
    return ConfigFactory.parseString(finalConfig)
   }
 
+  implicit class ImplicitConfigUtils(config: Config){
+    def getString(key: String, defaultValue: String): String = {
+      if (config.hasPath(key)) config.getString(key) else defaultValue
+    }
+
+    def getString(key: String): String = {
+      getString( key, "")
+    }
+
+    /*获取布尔值*/
+    def getBoolean( key: String, defaultValue: Boolean): Boolean = {
+      if (config.hasPath(key)) config.getBoolean(key) else defaultValue
+    }
+
+    def getBoolean(config: Config, key: String): Boolean = {
+      getBoolean(key, false)
+    }
+
+    /*获取整型数值*/
+    def getInt( key: String, defaultValue: Int): Int = {
+      if (config.hasPath(key)) config.getInt(key) else defaultValue
+    }
+
+    def getInt(key: String): Int = {
+      getInt( key, 0)
+    }
+
+    def getElement[T]( key: String): T = {
+      key match {
+        case key if (config.hasPath(key)) => config.getAnyRef(key).asInstanceOf[T]
+      }
+    }
+
+    /*取String List*/
+    def getStringList(key: String): List[String] = {
+      key match {
+        case x if config.hasPath(x) => config.getStringList(x).asScala.toList
+        case _ => Nil
+      }
+    }
+
+    /*获取mutable.Map[String, String]*/
+    def getStringMap( key: String): mutable.Map[String, String] = {
+      val map = new mutable.LinkedHashMap[String, String]
+      if (config.hasPath(key)) {
+        config.getConfig(key)
+          .entrySet()
+          .asScala
+          .foreach(entry => {
+            map.put(entry.getKey, entry.getValue.unwrapped().toString)
+          })
+      }
+      map
+    }
+
+    /*获取 Map[String, List[String]]*/
+    def getListMap(key: String): Map[String, List[String]] = {
+      var map = Map.empty[String, List[String]]
+      key match {
+        case x if config.hasPath(x) => {
+          config.getConfig(key).
+            entrySet().asScala.
+            foreach(entry => {
+              val key = entry.getKey
+              val value = entry.getValue.atKey(key).getStringList(key).asScala.toList
+              if (value.nonEmpty) {
+                map += key -> entry.getValue.atKey(key).getStringList(key).asScala.toList
+              }
+            })
+        }
+        case _ => return map
+      }
+      map
+    }
+  }
+
 }
+
