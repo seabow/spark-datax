@@ -70,7 +70,7 @@ case class Task(config:Config,job: Job) extends Logging{
       outputDF=outputDF.filter(filter)
     }
 
-    val limit=config.getInt(CommonConfig.limit)
+    val limit=config.getIntSafely(CommonConfig.limit)
     if(limit !=0){
       outputDF=outputDF.limit(limit)
     }
