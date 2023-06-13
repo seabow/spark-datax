@@ -15,10 +15,10 @@ object FileConnectorConfig{
 class FileConnector extends Connector with Logging{
   override def shortName(): String = "file"
   override def read(): DataFrame = {
-    val path: String =config.getString(FileConnectorConfig.path)
-    val format: String =config.getString(FileConnectorConfig.format)
-    val options=config.getStringMap(FileConnectorConfig.options)
-    val schema=config.getString(FileConnectorConfig.schema)
+    val path: String =config.getStringSafely(FileConnectorConfig.path)
+    val format: String =config.getStringSafely(FileConnectorConfig.format)
+    val options=config.getStringMapSafely(FileConnectorConfig.options)
+    val schema=config.getStringSafely(FileConnectorConfig.schema)
 
     /*读取数据源表*/
     var dfReader = spark.read.options(options)
@@ -33,10 +33,10 @@ class FileConnector extends Connector with Logging{
   }
 
   override def write(df: DataFrame): Int = {
-    val format = config.getString( FileConnectorConfig.format)
+    val format = config.getStringSafely( FileConnectorConfig.format)
     val writeMode = config.getString( FileConnectorConfig.mode, "overwrite")
-    val path = config.getString( FileConnectorConfig.path).stripSuffix("/")
-    val options=config.getStringMap(FileConnectorConfig.options)
+    val path = config.getStringSafely( FileConnectorConfig.path).stripSuffix("/")
+    val options=config.getStringMapSafely(FileConnectorConfig.options)
     var value = 1
 
     df.printSchema()

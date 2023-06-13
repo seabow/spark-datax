@@ -1,1 +1,4 @@
 io.github.seabow.datax.core.pipeline.connector.FileConnector
+io.github.seabow.datax.core.pipeline.connector.HiveConnector
+io.github.seabow.datax.core.pipeline.processor.JoinProcessor
+io.github.seabow.datax.core.pipeline.processor.SqlProcessor

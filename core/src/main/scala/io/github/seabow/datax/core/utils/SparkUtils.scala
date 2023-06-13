@@ -14,6 +14,9 @@ object SparkUtils {
    * @return
    */
   def getFileContent(fileName:String):String={
-    sparkSession.get.sparkContext.parallelize(Seq(1)).repartition(1).map(r=>Source.fromFile(SparkFiles.get(fileName)).mkString).first()
+    sparkSession.get.sparkContext.deployMode match {
+      case "client"=>  Source.fromFile(fileName,"utf8").mkString
+      case  _=> sparkSession.get.sparkContext.parallelize(Seq(1)).repartition(1).map(r=>Source.fromFile(SparkFiles.get(fileName)).mkString).first()
+    }
   }
 }

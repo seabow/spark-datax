@@ -82,7 +82,7 @@ case class Task(config:Config,job: Job) extends Logging{
     }
 
     //with_cols
-    val withCols=config.getStringMap(CommonConfig.with_cols)
+    val withCols=config.getStringMapSafely(CommonConfig.with_cols)
     if(!withCols.isEmpty){
       withCols.foreach{
         w=>
@@ -91,7 +91,7 @@ case class Task(config:Config,job: Job) extends Logging{
     }
 
     //cols_rename
-    val cols_rename=config.getStringMap(CommonConfig.cols_rename)
+    val cols_rename=config.getStringMapSafely(CommonConfig.cols_rename)
     if(!cols_rename.isEmpty){
       cols_rename.foreach{
         c=>

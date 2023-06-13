@@ -81,7 +81,7 @@ object ConfigUtils {
       if (config.hasPath(key)) config.getString(key) else defaultValue
     }
 
-    def getString(key: String): String = {
+    def getStringSafely(key: String): String = {
       getString( key, "")
     }
 
@@ -90,7 +90,7 @@ object ConfigUtils {
       if (config.hasPath(key)) config.getBoolean(key) else defaultValue
     }
 
-    def getBoolean(config: Config, key: String): Boolean = {
+    def getBooleanSafely(key: String): Boolean = {
       getBoolean(key, false)
     }
 
@@ -99,7 +99,7 @@ object ConfigUtils {
       if (config.hasPath(key)) config.getInt(key) else defaultValue
     }
 
-    def getInt(key: String): Int = {
+    def getIntSafely(key: String): Int = {
       getInt( key, 0)
     }
 
@@ -110,7 +110,7 @@ object ConfigUtils {
     }
 
     /*取String List*/
-    def getStringList(key: String): List[String] = {
+    def getStringListSafely(key: String): List[String] = {
       key match {
         case x if config.hasPath(x) => config.getStringList(x).asScala.toList
         case _ => Nil
@@ -118,7 +118,7 @@ object ConfigUtils {
     }
 
     /*获取mutable.Map[String, String]*/
-    def getStringMap( key: String): mutable.Map[String, String] = {
+    def getStringMapSafely(key: String): mutable.Map[String, String] = {
       val map = new mutable.LinkedHashMap[String, String]
       if (config.hasPath(key)) {
         config.getConfig(key)
@@ -132,7 +132,7 @@ object ConfigUtils {
     }
 
     /*获取 Map[String, List[String]]*/
-    def getListMap(key: String): Map[String, List[String]] = {
+    def getListMapSafely(key: String): Map[String, List[String]] = {
       var map = Map.empty[String, List[String]]
       key match {
         case x if config.hasPath(x) => {
