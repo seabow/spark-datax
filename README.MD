@@ -1,4 +1,5 @@
 # SPARK DATAX
+切换到[简体中文](README_CN.MD)
 
 SPARK DATAX is an offline data Spark-ETL tool that allows building Spark-ETL jobs with zero coding. It also enables custom data processing logic by developing custom Reader, Processor, and Writer plugins.
 
