@@ -60,10 +60,28 @@ class SimpleSmokeTest extends  AnyFunSuite with BeforeAndAfterAll with SparkSess
   }
 
    test("read and write"){
-     val confPath="core/src/test/conf/test_read_and_write.conf"
-     val confContent=getConfContentFromPath(confPath)
-     println(confContent)
-     Job(confContent,spark=spark).execute()
+     val configContent=
+       """
+         |{
+         |  tasks: [
+         |    {
+         |      name:"read"
+         |      type:"file"
+         |      stage:"reader"
+         |      path:"test_data/prepare_data"
+         |    }
+         |    {
+         |      name:"write"
+         |      type:"file"
+         |      stage:"writer"
+         |      input:"read"
+         |      path:"test_data/post_data"
+         |    }
+         |  ]
+         |}
+         |""".stripMargin
+     println(configContent)
+     Job(configContent,spark=spark).execute()
      spark.read.parquet("test_data/post_data").show(false)
    }
 }
