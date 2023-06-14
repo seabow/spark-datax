@@ -64,5 +64,6 @@ class SimpleSmokeTest extends  AnyFunSuite with BeforeAndAfterAll with SparkSess
      val confContent=getConfContentFromPath(confPath)
      println(confContent)
      Job(confContent,spark=spark).execute()
+     spark.read.parquet("test_data/post_data").show(false)
    }
 }

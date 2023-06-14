@@ -8,6 +8,11 @@ import java.util.ServiceLoader
 import scala.collection.JavaConverters._
 object ClassLoaderUtils {
 
+  /**
+   * Class loader
+   * @param shortName
+   * @return
+   */
   def lookUp(shortName:String):Class[_]=
   {
     val loader = Utils.getContextOrSparkClassLoader
