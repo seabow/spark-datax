@@ -40,6 +40,22 @@
             <artifactId>mongo-spark-connector_2.12</artifactId>
             <version>10.1.1</version>
         </dependency>
+        <dependency>
+            <groupId>org.scalatest</groupId>
+            <artifactId>scalatest_${scala.version.major}</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>de.bwaldvogel</groupId>
+            <artifactId>mongo-java-server</artifactId>
+            <version>1.43.0</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.github.mrpowers</groupId>
+            <artifactId>spark-fast-tests_2.12</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>

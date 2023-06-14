@@ -49,7 +49,7 @@ object ConfigUtils {
    * @param params
    * @return
    */
-  def parseAndResolveContent(configContent: String, params: Map[String, String]): Config = {
+  def parseAndResolveContent(configContent: String, params: Map[String, String]=Map.empty): Config = {
     var finalConfig = configContent
     // 先处理自定义的参数
     params.map { case (k, v) =>
