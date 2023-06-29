@@ -37,14 +37,14 @@ case class Task(config:Config,job: Job) extends Logging{
     config.getString("stage")match {
       case "reader"=>
         val connector=ClassLoaderUtils.getPipelineInstance(shortName).asInstanceOf[Connector]
-        connector.init(config)
+        connector.config(config).job(job)
         job.outputMap(config.getString("name"))=connector.read()
         dealWithCommonConfig()
       case "writer"=>
         job.outputMap(config.getString("name"))=job.outputMap(config.getString("input"))
         dealWithCommonConfig()
         val connector=ClassLoaderUtils.getPipelineInstance(shortName).asInstanceOf[Connector]
-        connector.init(config)
+        connector.config(config).job(job)
         connector.write(job.outputMap(config.getString("name")))
       case "processor"=>
         val input = config.getString( "input")
@@ -57,7 +57,7 @@ case class Task(config:Config,job: Job) extends Logging{
           })
         }
         val processor=ClassLoaderUtils.getPipelineInstance(shortName).asInstanceOf[Processor]
-        processor.init(config)
+        processor.config(config).job(job)
         job.outputMap(config.getString("name"))=processor.process(dfList)
         dealWithCommonConfig()
     }

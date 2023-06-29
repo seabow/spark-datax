@@ -82,7 +82,7 @@ class MongoConnectorTest extends AnyFunSuite with SparkSessionTestWrapper with B
           println(configContent)
            val config=ConfigUtils.parseAndResolveContent(configContent)
        val mongoConnector=new MongoConnector
-       mongoConnector.init(config)
+       mongoConnector.config(config)
        mongoConnector.write(testDF)
        val actualDF=mongoConnector.read()
        assertSmallDatasetEquality(actualDF, testDF)

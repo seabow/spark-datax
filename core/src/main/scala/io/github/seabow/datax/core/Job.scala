@@ -7,15 +7,30 @@ import org.apache.spark.sql._
 import java.util.UUID
 import scala.collection.JavaConverters._
 import scala.collection.mutable
+import io.github.seabow.datax.common.ConfigUtils._
 
 case class Job(configContent: String, params: Map[String, String]=Map.empty, val spark: SparkSession)extends Logging{
   var outputMap: mutable.Map[String, DataFrame] = mutable.Map()
   val jobId = spark.sparkContext.applicationId + "_" + UUID.randomUUID()
-  val jobDir = s"datax/job_dir/$jobId"
+  var jobDir = s"datax/job_dir/$jobId"
+  var checkpointPath=s"datax/checkpoint/${spark.sparkContext.applicationId}"
   val jobConfig = {
     val conf = ConfigUtils.parseAndResolveContent(configContent, params)
     println(conf)
     conf
+  }
+
+  def setJobAttr():Unit={
+    var base_dir=jobConfig.getString("base_dir","")
+    if(base_dir.nonEmpty){
+      base_dir=base_dir.stripSuffix("/")+"/"
+      checkpointPath=s"$base_dir$checkpointPath"
+      jobDir=s"$base_dir$jobDir"
+    }
+    if(spark.sparkContext.getCheckpointDir.isEmpty){
+      spark.sparkContext.setCheckpointDir(checkpointPath)
+    }
+
   }
 
   def execute(): Unit = {
@@ -35,6 +50,7 @@ case class Job(configContent: String, params: Map[String, String]=Map.empty, val
   }
 
   def compile(): Seq[Task] = {
+    setJobAttr()
     val taskConfigs = jobConfig.getConfigList("tasks").asScala
     val tasks = taskConfigs.map(Task(_, this))
     tasks

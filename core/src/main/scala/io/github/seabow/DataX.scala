@@ -37,8 +37,6 @@ object DataX extends Logging {
       case "client"=>  Source.fromFile(configPath.get,"utf8").mkString
       case  _=>  SparkUtils.getFileContent(configPath.get)
     }
-    val checkpointPath=s"datax/checkpoint/${spark.sparkContext.applicationId}"
-    spark.sparkContext.setCheckpointDir(checkpointPath)
     Job(configContent,params,spark).execute()
   }
 }
