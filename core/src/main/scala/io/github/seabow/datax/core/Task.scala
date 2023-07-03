@@ -38,7 +38,7 @@ case class Task(config:Config,job: Job) extends Logging{
       case "reader"=>
         val connector=ClassLoaderUtils.getPipelineInstance(shortName).asInstanceOf[Connector]
         connector.config(config).job(job)
-        job.outputMap(config.getString("name"))=connector.read()
+        job.outputMap(config.getStringSafely("name"))=connector.read()
         dealWithCommonConfig()
       case "writer"=>
         job.outputMap(config.getString("name"))=job.outputMap(config.getString("input"))
@@ -47,7 +47,7 @@ case class Task(config:Config,job: Job) extends Logging{
         connector.config(config).job(job)
         connector.write(job.outputMap(config.getString("name")))
       case "processor"=>
-        val input = config.getString( "input")
+        val input = config.getStringSafely( "input")
         val dfList = new ListBuffer[DataFrame]
         if(input.nonEmpty){
           val inputList = input.split(",")

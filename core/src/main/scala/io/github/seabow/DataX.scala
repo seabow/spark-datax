@@ -37,6 +37,11 @@ object DataX extends Logging {
       case "client"=>  Source.fromFile(configPath.get,"utf8").mkString
       case  _=>  SparkUtils.getFileContent(configPath.get)
     }
-    Job(configContent,params,spark).execute()
+    val job=Job(configContent,params,spark)
+    try{
+      job.execute()
+    }finally{
+      job.close()
+    }
   }
 }

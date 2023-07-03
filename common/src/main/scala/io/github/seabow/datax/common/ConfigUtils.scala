@@ -1,6 +1,6 @@
 package io.github.seabow.datax.common
 
-import com.typesafe.config._
+import com.typesafe.config.{ConfigResolveOptions, _}
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable
@@ -57,7 +57,8 @@ object ConfigUtils {
       finalConfig = finalConfig.replaceAll(findStr, v)
     }
     val paramConfig: Config = ConfigFactory.parseMap(params.asJava)
-    val config = ConfigFactory.parseString(finalConfig).resolveWith(paramConfig, ConfigResolveOptions.defaults().setAllowUnresolved(true))
+    val resolveOptions= ConfigResolveOptions.defaults().setAllowUnresolved(true)
+    val config = ConfigFactory.parseString(finalConfig).resolve(resolveOptions).resolveWith(paramConfig,resolveOptions)
     if(!config.hasPath("udv")){
       return config
     }
