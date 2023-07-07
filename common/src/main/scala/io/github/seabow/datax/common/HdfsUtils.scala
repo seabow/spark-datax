@@ -1,6 +1,5 @@
 package io.github.seabow.datax.common
 
-import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileStatus, FileSystem, Path}
 
 import java.io.InputStream
@@ -11,8 +10,7 @@ object HdfsUtils {
     def toPath = new Path(s)
   }
 
-
-  val hdfs: FileSystem = FileSystem.get(new Configuration())
+  lazy val hdfs: FileSystem = FileSystem.get(SparkUtils.getHadoopConf())
 
   def readAsString(p: String): String = {
     val path = new Path(p)

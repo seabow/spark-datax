@@ -1,8 +1,8 @@
 package io.github.seabow.datax.core.pipeline.processor
 
 
+import io.github.seabow.datax.common.SparkUtils
 import io.github.seabow.datax.core.pipeline.Processor
-import io.github.seabow.datax.core.utils.SparkUtils
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.DataFrame
 

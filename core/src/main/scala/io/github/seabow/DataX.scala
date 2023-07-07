@@ -1,8 +1,7 @@
 package io.github.seabow
 
-import io.github.seabow.datax.common.ParameterUtils
+import io.github.seabow.datax.common.{ParameterUtils, SparkUtils}
 import io.github.seabow.datax.core.Job
-import io.github.seabow.datax.core.utils.SparkUtils
 import org.apache.spark.SparkConf
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.SparkSession
