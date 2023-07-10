@@ -30,7 +30,7 @@ case class Job(configContent: String, params: Map[String, String]=Map.empty, val
     }
     if(spark.sparkContext.getCheckpointDir.isEmpty){
       spark.sparkContext.setCheckpointDir(checkpointPath)
-      HdfsUtils.hdfs.deleteOnExit(new Path(checkpointPath))
+      HdfsUtils.hdfs(new Path(checkpointPath) ).deleteOnExit(new Path(checkpointPath))
     }
 
   }
@@ -41,7 +41,7 @@ case class Job(configContent: String, params: Map[String, String]=Map.empty, val
       log.info(s"Make job dir $jobDir")
       HdfsUtils.mkdir(jobDir)
     }
-    HdfsUtils.hdfs.deleteOnExit(new Path(jobDir))
+    HdfsUtils.hdfs(new Path(jobDir)).deleteOnExit(new Path(jobDir))
     tasks.foreach(_.execute())
 
   }

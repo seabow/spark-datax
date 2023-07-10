@@ -10,14 +10,15 @@ object HdfsUtils {
     def toPath = new Path(s)
   }
 
-  lazy val hdfs: FileSystem = FileSystem.get(SparkUtils.getHadoopConf())
+  def hdfs(path: Path): FileSystem = FileSystem.get(path.toUri,SparkUtils.getHadoopConf())
 
   def readAsString(p: String): String = {
     val path = new Path(p)
+     val fs=hdfs(path)
     var result = new Array[Byte](0)
-    if (hdfs.exists(path)) {
-      val inputStream = hdfs.open(path)
-      val stat = hdfs.getFileStatus(path)
+    if (fs.exists(path)) {
+      val inputStream = fs.open(path)
+      val stat = fs.getFileStatus(path)
       val length = stat.getLen.toInt
       val buffer = new Array[Byte](length)
       inputStream.readFully(buffer)
@@ -29,10 +30,12 @@ object HdfsUtils {
 
   def readAsByte(p: String): Array[Byte] = {
     val path = new Path(p)
+    val fs=hdfs(path)
+
     var result = new Array[Byte](0)
-    if (hdfs.exists(path)) {
-      val inputStream = hdfs.open(path)
-      val stat = hdfs.getFileStatus(path)
+    if (fs.exists(path)) {
+      val inputStream = fs.open(path)
+      val stat = fs.getFileStatus(path)
       val length = stat.getLen.toInt
       val buffer = new Array[Byte](length)
       inputStream.readFully(buffer)
@@ -43,8 +46,9 @@ object HdfsUtils {
 
   def writeBytes(p:String,bytes:Array[Byte]):Boolean={
     val path=new Path(p)
-    if(!hdfs.exists(path)){
-      val dos = hdfs.create(path)
+    val fs=hdfs(path)
+    if(!fs.exists(path)){
+      val dos = fs.create(path)
       dos.write(bytes, 0, bytes.length)
       dos.close()
     }
@@ -53,8 +57,9 @@ object HdfsUtils {
 
   def readAsInputStream(p: String): InputStream = {
     val path = new Path(p)
-    if (hdfs.exists(path)) {
-      hdfs.open(path)
+    val fs=hdfs(path)
+    if (fs.exists(path)) {
+      fs.open(path)
     } else {
       null
     }
@@ -62,26 +67,28 @@ object HdfsUtils {
 
   def getLatestSubdir(path: String): String = {
     Try{
-      val lastestSubdir = hdfs.listStatus(new Path(path)).last.getPath.toString
+      val p=new Path(path)
+      val fs=hdfs(p)
+      val lastestSubdir = fs.listStatus(p).last.getPath.toString
       lastestSubdir
     }.getOrElse(path)
   }
 
-  def listDirs(p: String): Array[FileStatus] = hdfs.listStatus(p.toPath).filter(_.isDirectory)
+  def listDirs(p: String): Array[FileStatus] = hdfs(p.toPath).listStatus(p.toPath).filter(_.isDirectory)
 
-  def listFiles(p: String): Array[FileStatus] = hdfs.listStatus(p.toPath).filter(_.isFile)
+  def listFiles(p: String): Array[FileStatus] = hdfs(p.toPath).listStatus(p.toPath).filter(_.isFile)
 
-  def exist(p: String): Boolean = hdfs.exists(p.toPath)
+  def exist(p: String): Boolean = hdfs(p.toPath).exists(p.toPath)
 
-  def mkdir(path: String): Boolean = hdfs.mkdirs(path.toPath)
+  def mkdir(path: String): Boolean = hdfs(path.toPath).mkdirs(path.toPath)
 
-  def delete(path: String): Boolean = hdfs.delete(path.toPath, true)
+  def delete(path: String): Boolean = hdfs(path.toPath).delete(path.toPath, true)
 
-  def status(path: String): Array[FileStatus] = hdfs.listStatus(path.toPath)
+  def status(path: String): Array[FileStatus] = hdfs(path.toPath).listStatus(path.toPath)
 
   def touch(path: String): Boolean = {
     if (!exist(path)) {
-      hdfs.createNewFile(path.toPath)
+      hdfs(path.toPath).createNewFile(path.toPath)
       true
     }
     false
