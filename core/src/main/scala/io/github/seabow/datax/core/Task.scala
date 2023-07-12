@@ -20,6 +20,9 @@ object CommonConfig{
   val repartition="repartition"
   //colsec
   val coalesce="coalesce"
+
+  val repartition_by_count="repartition_by_count"
+
   //cache
   val filter="filter"
   // cols rename
@@ -108,11 +111,23 @@ case class Task(config:Config,job: Job) extends Logging{
     //repartition and coalesce
     val repartition=config.getInt(CommonConfig.repartition,-1)
     val coalesce=config.getInt(CommonConfig.coalesce,-1)
+    val repartitionByCount=config.getStringSafely(CommonConfig.repartition_by_count)
 
     if(repartition>0){
       outputDF=outputDF.repartition(repartition)
     }else if(coalesce>0){
       outputDF=outputDF.coalesce(coalesce)
+    }else if(repartitionByCount.nonEmpty){
+        val (countPerPartition,maxPartitionNum)=repartitionByCount.split(",") match {
+          case Array(x,y)=>(x.toLong,y.toInt)
+          case Array(x)=>(x.toLong,Int.MaxValue)
+          case _=> throw new IllegalArgumentException("invalid repartition_by_count format. usage is: repartition_by_count: countPerPartition[,maxPartitionNum]")
+        }
+       val outputCount=outputDF.count
+       val partitionNum=Math.min(outputCount/countPerPartition + 1,maxPartitionNum).toInt
+      outputDF=outputDF.repartition(partitionNum)
+      val taskName=config.getString("name")
+      println(s"$taskName output count $outputCount ,repartition to $partitionNum.")
     }
     job.outputMap(config.getString("name"))=outputDF
   }
