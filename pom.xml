@@ -7,7 +7,7 @@
     <groupId>io.github.seabow</groupId>
     <artifactId>spark-datax</artifactId>
     <packaging>pom</packaging>
-    <version>0.2.5-SNAPSHOT</version>
+    <version>0.2.5</version>
     <name>${project.artifactId}</name>
     <description>A Lucene Datasource of Spark.Supports push down filter and push down aggeragation</description>
     <url>https://github.com/seabow/spark-datax</url>
@@ -52,7 +52,7 @@
     <properties>
         <maven.compiler.source>8</maven.compiler.source>
         <maven.compiler.target>8</maven.compiler.target>
-        <spark.version>3.2.2</spark.version>
+        <spark.version>3.3.2</spark.version>
         <scala.version.major>2.12</scala.version.major>
         <scala.version.minor>2.12.10</scala.version.minor>
         <hadoop.version>3.3.3</hadoop.version>
