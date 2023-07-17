@@ -14,6 +14,7 @@ object DataX extends Logging {
       .set("spark.port.maxRetries", "30")
       .set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
       .set("spark.hadoop.mapreduce.fileoutputcommitter.algorithm.version", "2")
+      .set("spark.hadoop.mapreduce.fileoutputcommitter.cleanup.skipped", "true")
       .set("spark.sql.broadcastTimeout", "3000")
     //获取参数
     val params = ParameterUtils.getParameters(args)
