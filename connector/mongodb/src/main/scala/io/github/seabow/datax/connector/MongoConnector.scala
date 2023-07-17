@@ -50,7 +50,7 @@ class MongoConnector extends Connector{
    *  @return
    */
   override def write(df: DataFrame): Int = {
-    val mode=config.getString("mode","append")
+    val mode=config.getString(MongoConnectorConfig.mode,"append")
     val options=config.getStringMapSafely("options")
     df.write.format("mongodb").options(options).mode(mode).save()
     1

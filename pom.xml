@@ -47,6 +47,7 @@
         <module>common</module>
         <module>core</module>
         <module>connector/mongodb</module>
+        <module>connector/jdbc</module>
     </modules>
 
     <properties>
