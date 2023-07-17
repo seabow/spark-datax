@@ -1,1 +1,1 @@
-io.github.seabow.datax.connector.MongoConnector
+io.github.seabow.datax.connector.JdbcConnector
