@@ -11,7 +11,7 @@ object JdbcConnectorConfig {
 }
 
 /**
- * The type Mongo connector.
+ * The type Jdbc connector.
  */
 class JdbcConnector extends Connector{
   val dbTypeDriverMap=Map(

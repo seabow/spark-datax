@@ -5,9 +5,26 @@ import io.github.seabow.datax.core.pipeline.{Connector, Processor}
 import org.apache.spark.datax.utils.ClassLoaderUtils
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.DataFrame
-import org.apache.spark.sql.functions.expr
+import org.apache.spark.sql.functions._
 
+import java.util.concurrent.ForkJoinPool
 import scala.collection.mutable.ListBuffer
+import scala.collection.parallel.ForkJoinTaskSupport
+
+object ReaderConfig{
+  /**
+   * {
+   *  is_in:{
+   *    input: input_task_name
+   *    col: col_name
+   *    par: 10 //default 1 for serial, unlimit-> -1 represents the num of batch
+   *    batch_size:10000 //default input.size
+   *    max_batch: 10  // if both batch_size and max_batch is set,batch_size is max(batch_size,input.size/max_batch)
+   *   }
+   * }
+   */
+  val is_in="is_in"
+}
 
 object CommonConfig{
   //select_exprs
@@ -42,6 +59,7 @@ case class Task(config:Config,job: Job) extends Logging{
         val connector=ClassLoaderUtils.getPipelineInstance(shortName).asInstanceOf[Connector]
         connector.config(config).job(job)
         job.outputMap(config.getStringSafely("name"))=connector.read()
+        dealWithReaderConfig()
         dealWithCommonConfig()
       case "writer"=>
         job.outputMap(config.getString("name"))=job.outputMap(config.getString("input"))
@@ -65,6 +83,36 @@ case class Task(config:Config,job: Job) extends Logging{
         dealWithCommonConfig()
     }
   }
+
+  def dealWithReaderConfig():Unit={
+    var outputDF=job.outputMap(config.getString("name"))
+    val is_in=config.getStringMapSafely("is_in")
+    if(is_in.nonEmpty){
+      val isInInputDF=job.outputMap(is_in("input"))
+      val par=is_in.getOrElse("par","1").toInt
+      val batch_size=is_in.getOrElse("batch_size","-1").toInt
+      val max_batch=is_in.getOrElse("max_batch","-1").toInt
+      val col_name=is_in.getOrElse("col","")
+      assert(isInInputDF!=null && col_name.nonEmpty)
+      val isInInputs=isInInputDF.collect().map(_.get(0))
+      var batch=1
+      if(batch_size>0){
+        batch=math.ceil(isInInputs.length.toDouble/batch_size).toInt
+        if(max_batch>0){
+          batch=math.min(max_batch,batch)
+        }
+      }
+      val actualBatchSize = Math.ceil(isInInputs.length.toDouble / batch).toInt
+      val isInInputsBatches=isInInputs.grouped(actualBatchSize).toArray
+      val parBatches=isInInputsBatches.par
+      parBatches.tasksupport = new ForkJoinTaskSupport(new ForkJoinPool(par))
+     outputDF= parBatches.map(
+        batch=>
+          outputDF.filter(col(col_name).isin(batch:_*))
+       ).reduce((a,b)=>a.union(b))
+    }
+  }
+
   def dealWithCommonConfig():Unit={
     var outputDF=job.outputMap(config.getString("name"))
     //filter
