@@ -111,6 +111,7 @@ case class Task(config:Config,job: Job) extends Logging{
           outputDF.filter(col(col_name).isin(batch:_*))
        ).reduce((a,b)=>a.union(b))
     }
+    job.outputMap(config.getString("name"))=outputDF
   }
 
   def dealWithCommonConfig():Unit={
