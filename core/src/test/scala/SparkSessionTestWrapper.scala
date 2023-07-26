@@ -5,6 +5,7 @@ trait SparkSessionTestWrapper {
   val spark: SparkSession = {
     SparkSession
       .builder()
+      .enableHiveSupport()
       .master("local")
       .appName("spark session")
       .config("spark.sql.shuffle.partitions", "4")

@@ -5,7 +5,7 @@ import io.github.seabow.datax.core.pipeline.Connector
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions._
-import org.apache.spark.sql.types.StructType
+import org.apache.spark.sql.types._
 
 object HiveConnectorConfig{
   def table = "table"
@@ -24,8 +24,27 @@ class HiveConnector extends Connector with Logging{
   }
 
   def reorderDataFrame(dataFrame: DataFrame, schema: StructType): DataFrame = {
+    val dataSchema=dataFrame.schema
     val fieldNames = schema.fieldNames
-    val selectColumns = fieldNames.map(fieldName => col(fieldName))
+    val selectColumns = fieldNames.map(fieldName =>
+      if(dataSchema.fieldNames.contains(fieldName))
+        {
+          (dataSchema(fieldName).dataType,schema(fieldName).dataType) match {
+            case (from:DataType,to:DataType) if from.equals(to)=>
+              col(fieldName)
+            case (from:StructType,StringType)=>
+              to_json(col(fieldName))
+            case (ArrayType(elementType, _) ,StringType)=>
+              to_json(col(fieldName))
+            case (MapType(k,v,_),to:StringType)=>
+              to_json(col(fieldName))
+            case _=>
+              col(fieldName).cast(schema(fieldName).dataType)
+          }
+        }else{
+         lit(null)
+        }
+      )
     dataFrame.select(selectColumns: _*)
   }
 
