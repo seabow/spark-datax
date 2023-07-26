@@ -1,5 +1,6 @@
 package io.github.seabow.datax.core
 
+import com.typesafe.config.ConfigRenderOptions
 import io.github.seabow.datax.common._
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql._
@@ -17,7 +18,7 @@ case class Job(configContent: String, params: Map[String, String]=Map.empty, val
   var checkpointPath=s"datax/checkpoint/${spark.sparkContext.applicationId}"
   val jobConfig = {
     val conf = ConfigUtils.parseAndResolveContent(configContent, params)
-    println(conf)
+    println(conf.root().render( ConfigRenderOptions.concise().setFormatted(true)))
     conf
   }
 

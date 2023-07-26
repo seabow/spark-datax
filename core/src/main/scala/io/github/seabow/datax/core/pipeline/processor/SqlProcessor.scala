@@ -5,6 +5,7 @@ import io.github.seabow.datax.common.SparkUtils
 import io.github.seabow.datax.core.pipeline.Processor
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.DataFrame
+import io.github.seabow.datax.common.ConfigUtils._
 
 import scala.collection.mutable.ListBuffer
 
@@ -19,7 +20,7 @@ object SqlProcessor {
 
 class SqlProcessor extends Processor with Logging{
   override def process(dfList: ListBuffer[DataFrame]): DataFrame = {
-    val mode=config.getString(SqlProcessorConfig.mode)
+    val mode=config.getString(SqlProcessorConfig.mode,"sql")
     val content=config.getString(SqlProcessorConfig.content)
     var finalDF = spark.emptyDataFrame
     //将输入的reader或processor按其name映射为tempView
