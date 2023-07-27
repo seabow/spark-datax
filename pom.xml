@@ -48,6 +48,7 @@
         <module>core</module>
         <module>connector/mongodb</module>
         <module>connector/jdbc</module>
+        <module>connector/protobuf</module>
     </modules>
 
     <properties>

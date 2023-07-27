@@ -1,6 +1,7 @@
 package io.github.seabow.datax.core.pipeline.processor
 
-import com.typesafe.config.ConfigFactory
+import com.typesafe.config.{ConfigFactory, ConfigRenderOptions}
+import io.github.seabow.datax.common.ConfigUtils.ImplicitConfigUtils
 import io.github.seabow.datax.core.Task
 import io.github.seabow.datax.core.pipeline.Processor
 import org.apache.spark.sql.DataFrame
@@ -27,7 +28,7 @@ import scala.collection.mutable.ListBuffer
 object LoopProcessorConfig{
   val tasks="tasks"
   val _var="var"
-
+  val _yield="yield"
 }
 
 class LoopProcessor extends Processor{
@@ -36,13 +37,21 @@ class LoopProcessor extends Processor{
     val loopList= inputDF.collect().map(_.get(0))
     val tasksConfigList=config.getConfigList("tasks")
     val _var=config.getString("var")
+    val _yield=config.getStringSafely("yield")
+    val yieldDFs:ListBuffer[DataFrame]=ListBuffer.empty
     for (elem <- loopList){
       tasksConfigList.map{
         config=>
-         ConfigFactory.parseString( config.root().render().replaceAll("\\#\\{"+_var+"\\}",elem.toString))
+         val configInstanceStr = config.root().render(ConfigRenderOptions.concise().setFormatted(true)).replaceAll("\\#\\{" + _var + "\\}", elem.toString)
+          println("loop tasks conf:")
+          println(configInstanceStr)
+          ConfigFactory.parseString( configInstanceStr)
       }.map(Task(_, job)).foreach(_.execute())
+      if(_yield.nonEmpty){
+        yieldDFs.append(job.outputMap(_yield))
+      }
     }
-    spark.emptyDataFrame
+    yieldDFs.reduce((a,b)=>a.unionByName(b,true))
   }
 
   override def shortName(): String = "loop"
