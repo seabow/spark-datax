@@ -4,7 +4,7 @@ import io.github.seabow.datax.core.pipeline.Connector
 import org.apache.spark.sql.DataFrame
 import io.github.seabow.datax.common.ConfigUtils._
 import org.apache.spark.sql.functions._
-import org.apache.spark.sql.protobuf.functions._
+import org.apache.spark.sql.protobuf.functions.from_protobuf
 
 import scala.collection.JavaConverters._
 
