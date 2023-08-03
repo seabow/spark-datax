@@ -18,7 +18,7 @@ package org.apache.spark.sql.protobuf
 
 import com.google.protobuf.Descriptors.FieldDescriptor.JavaType._
 import com.google.protobuf.Descriptors._
-import com.google.protobuf.{ByteString, DynamicMessage, Message}
+import com.google.protobuf.{ByteString, Descriptors, DynamicMessage, Message}
 import org.apache.spark.sql.AnalysisException
 import org.apache.spark.sql.catalyst.expressions.{SpecificInternalRow, UnsafeArrayData}
 import org.apache.spark.sql.catalyst.util.{ArrayBasedMapData, ArrayData, DateTimeUtils, GenericArrayData}
@@ -237,6 +237,8 @@ private[sql] class ProtobufDeserializer(
 
       case (ENUM, StringType) =>
         (updater, ordinal, value) => updater.set(ordinal, UTF8String.fromString(value.toString))
+      case (ENUM, IntegerType) =>
+        (updater, ordinal, value) => updater.set(ordinal, value.asInstanceOf[Descriptors.EnumValueDescriptor].getNumber)
 
       case _ =>
         throw QueryCompilationErrors.cannotConvertProtobufTypeToSqlTypeError(

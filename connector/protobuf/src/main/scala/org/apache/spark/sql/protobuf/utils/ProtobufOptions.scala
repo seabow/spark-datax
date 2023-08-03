@@ -45,6 +45,8 @@ private[sql] class ProtobufOptions(
   // record has more depth than the allowed value for recursive fields, it will be truncated
   // and corresponding fields are ignored (dropped).
   val recursiveFieldMaxDepth: Int = parameters.getOrElse("recursive.fields.max.depth", "-1").toInt
+
+  val castEnumAsInt: Boolean = parameters.getOrElse("castEnumAsInt","true").toBoolean
 }
 
 private[sql] object ProtobufOptions {
