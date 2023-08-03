@@ -48,6 +48,8 @@ object CommonConfig{
   // drop_cols
   val drop_cols="drop_cols"
 
+  val local_sort="local_sort"
+
   val limit = "limit"
 }
 case class Task(config:Config,job: Job) extends Logging{
@@ -178,6 +180,13 @@ case class Task(config:Config,job: Job) extends Logging{
       val taskName=config.getString("name")
       println(s"$taskName output count $outputCount ,repartition to $partitionNum.")
     }
+
+    val local_sort=config.getStringSafely(CommonConfig.local_sort)
+    if(local_sort.nonEmpty){
+      val localsortCols=local_sort.split(",").map(expr(_))
+      outputDF=outputDF.sortWithinPartitions(localsortCols:_*)
+    }
+
     job.outputMap(config.getString("name"))=outputDF
   }
 }
