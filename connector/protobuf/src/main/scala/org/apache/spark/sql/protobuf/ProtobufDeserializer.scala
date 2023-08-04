@@ -20,7 +20,7 @@ import com.google.protobuf.Descriptors.FieldDescriptor.JavaType._
 import com.google.protobuf.Descriptors._
 import com.google.protobuf.{ByteString, Descriptors, DynamicMessage, Message}
 import org.apache.spark.sql.AnalysisException
-import org.apache.spark.sql.catalyst.expressions.{SpecificInternalRow, UnsafeArrayData}
+import org.apache.spark.sql.catalyst.expressions.SpecificInternalRow
 import org.apache.spark.sql.catalyst.util.{ArrayBasedMapData, ArrayData, DateTimeUtils, GenericArrayData}
 import org.apache.spark.sql.catalyst.{InternalRow, NoopFilters, StructFilters}
 import org.apache.spark.sql.errors.Implicits.QueryComiplationErrorsImplicit
@@ -302,13 +302,13 @@ private[sql] class ProtobufDeserializer(
 
   // TODO: All of the code below this line is same between protobuf and avro, it can be shared.
   private def createArrayData(elementType: DataType, length: Int): ArrayData = elementType match {
-    case BooleanType => UnsafeArrayData.fromPrimitiveArray(new Array[Boolean](length))
-    case ByteType => UnsafeArrayData.fromPrimitiveArray(new Array[Byte](length))
-    case ShortType => UnsafeArrayData.fromPrimitiveArray(new Array[Short](length))
-    case IntegerType => UnsafeArrayData.fromPrimitiveArray(new Array[Int](length))
-    case LongType => UnsafeArrayData.fromPrimitiveArray(new Array[Long](length))
-    case FloatType => UnsafeArrayData.fromPrimitiveArray(new Array[Float](length))
-    case DoubleType => UnsafeArrayData.fromPrimitiveArray(new Array[Double](length))
+    case BooleanType => new GenericArrayData(new Array[Boolean](length))
+    case ByteType => new GenericArrayData(new Array[Byte](length))
+    case ShortType => new GenericArrayData(new Array[Short](length))
+    case IntegerType => new GenericArrayData(new Array[Int](length))
+    case LongType => new GenericArrayData(new Array[Long](length))
+    case FloatType => new GenericArrayData(new Array[Float](length))
+    case DoubleType => new GenericArrayData(new Array[Double](length))
     case _ => new GenericArrayData(new Array[Any](length))
   }
 

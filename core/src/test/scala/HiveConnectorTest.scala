@@ -51,6 +51,10 @@ class HiveConnectorTest  extends  AnyFunSuite with BeforeAndAfterAll with SparkS
 //    hiveConnector.write(df)
 //  }
 
+  test("hive insertInto table"){
+
+  }
+
   override def   afterAll(){
    spark.sql("drop table if exists test_hive_table")
   }

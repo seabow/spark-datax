@@ -10,6 +10,8 @@ import org.apache.spark.sql.types.StructType
 object HiveConnectorConfig{
   def table = "table"
   def partition_by = "partition_by"
+  //partition_spec as: partition_col_1='partition_value_1',partition_col_2='partition_value_2'
+  def partition_spec = "partition_spec"
   def mode = "mode"
   def options = "options"
   def format="format"
@@ -33,6 +35,7 @@ class HiveConnector extends Connector with Logging{
     val table: String = config.getStringSafely( HiveConnectorConfig.table)
     val options = config.getStringMapSafely(HiveConnectorConfig.options)
     val partitionBy = config.getStringListSafely(HiveConnectorConfig.partition_by)
+    val partitionSpec=config.getStringSafely(HiveConnectorConfig.partition_spec)
     val writeMode = config.getString( HiveConnectorConfig.mode, "append")
     val format = config.getString(HiveConnectorConfig.format, "hive" )
 
@@ -41,12 +44,6 @@ class HiveConnector extends Connector with Logging{
     var tableExists = spark.catalog.tableExists(s"$table")
 
     var dfToWrite=df
-
-    if(tableExists)
-      {
-        dfToWrite =reorderDataFrame(df,spark.read.table(table).schema)
-      }
-
     var dfWriter = dfToWrite.write.mode(writeMode).options(options).format(format)
 
 
@@ -54,10 +51,32 @@ class HiveConnector extends Connector with Logging{
       if (!tableExists) {
         log.warn(s"saveAsTable:$table")
         dfWriter.partitionBy(partitionBy: _*).saveAsTable(s"$table")
-      } else {
+      } else if(partitionSpec.nonEmpty){
+         //user spark sql insert overwrite
+        val partitionSpecCols= partitionSpec.split(","
+        ).map(_.split("=").head.trim)
+        val fieldsWithoutPartition=spark.read.table(table).schema.fieldNames.filterNot(
+          partitionSpecCols.contains(_))
+        dfToWrite=df.select(fieldsWithoutPartition.map(col(_)):_*)
+        val tmpViewName=config.getString("name")
+        dfToWrite.createOrReplaceTempView(tmpViewName)
+        val sql=
+          s"""
+            | INSERT $writeMode $table
+            | PARTITION ( $partitionSpec )
+            | SELECT * FROM $tmpViewName
+            |
+            |""".stripMargin
+        spark.sql(sql)
+      }
+      else
+      {
         log.warn(s"insertInto:$table")
+        dfToWrite =reorderDataFrame(df,spark.read.table(table).schema)
+        dfWriter = dfToWrite.write.mode(writeMode).options(options).format(format)
         dfWriter.insertInto(s"$table")
       }
+
     } catch {
       case t: Throwable =>
         log.error("write df failed", t)

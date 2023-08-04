@@ -113,8 +113,10 @@ private[protobuf] case class ProtobufDataToCatalyst(
             messageDescriptor.getFields.get(number).toString)
         case None =>
       }
-
+//      var printer = JsonFormat.printer.printingEnumsAsInts.omittingInsignificantWhitespace.preservingProtoFieldNames
+//      println(printer.print(result))
       val deserialized = deserializer.deserialize(result)
+//      println(deserialized.get)
       assert(
         deserialized.isDefined,
         "Protobuf deserializer cannot return an empty result because filters are not pushed down")
