@@ -10,6 +10,17 @@ object MongoConnectorConfig {
   def aggregation_pipeline="aggregation_pipeline"
   def schema="schema"
   def mode="mode"
+  // see https://www.mongodb.com/docs/spark-connector/current/configuration/
+
+  /**
+   * options:{
+   * connection.uri:"mongodb://localhost:27017/"
+   * database:your_database
+   * collection:your_collection
+   * aggregation.pipeline:"""{"$match": {"closed": false}}"""
+   * }
+   * @return
+   */
   def options="options"
 }
 
