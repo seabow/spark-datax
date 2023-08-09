@@ -51,7 +51,12 @@ class LoopProcessor extends Processor{
         yieldDFs.append(job.outputMap(_yield))
       }
     }
-    yieldDFs.reduce((a,b)=>a.unionByName(b,true))
+    if(yieldDFs.nonEmpty){
+      yieldDFs.reduce((a,b)=>a.unionByName(b,true))
+    }else{
+      spark.emptyDataFrame
+    }
+
   }
 
   override def shortName(): String = "loop"
