@@ -84,8 +84,8 @@ class HiveConnector extends Connector with Logging{
 
     } catch {
       case t: Throwable =>
-        log.error("write df failed", t)
-        value = 0
+        log.error(config.getString("name")+" : write df failed!")
+        throw t
     }
     value
   }

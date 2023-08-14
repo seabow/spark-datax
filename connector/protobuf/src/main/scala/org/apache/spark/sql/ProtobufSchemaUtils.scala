@@ -13,7 +13,8 @@ object ProtobufSchemaUtils extends Logging{
 
   //输入proto_dir和msg_type，输出schema
   def getProtobufSchema(descriptorPath:String,msgName:String):String={
-    val descriptor= ProtobufUtils.buildDescriptor(descriptorPath,msgName)
+    ProtobufUtils.readDescriptorFileContent(descriptorPath)
+    val descriptor= ProtobufUtils.buildDescriptor(ProtobufUtils.readDescriptorFileContent(descriptorPath),msgName)
     SchemaConverters.toSqlType(descriptor).dataType.sql
   }
 

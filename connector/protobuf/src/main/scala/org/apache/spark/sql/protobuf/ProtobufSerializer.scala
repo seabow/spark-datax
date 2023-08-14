@@ -16,31 +16,30 @@
  */
 package org.apache.spark.sql.protobuf
 
-import com.google.protobuf.Descriptors.FieldDescriptor.JavaType._
-import com.google.protobuf.Descriptors.{Descriptor, FieldDescriptor}
+import scala.collection.JavaConverters._
 import com.google.protobuf.{Duration, DynamicMessage, Timestamp}
+import com.google.protobuf.Descriptors.{Descriptor, FieldDescriptor}
+import com.google.protobuf.Descriptors.FieldDescriptor.JavaType._
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.AnalysisException
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions.SpecializedGetters
-import org.apache.spark.sql.catalyst.util.IntervalStringStyles.ANSI_STYLE
 import org.apache.spark.sql.catalyst.util.{DateTimeUtils, IntervalUtils}
+import org.apache.spark.sql.catalyst.util.IntervalStringStyles.ANSI_STYLE
 import org.apache.spark.sql.errors.Implicits.QueryComiplationErrorsImplicit
-import org.apache.spark.sql.errors.QueryCompilationErrors
+import org.apache.spark.sql.errors.{QueryCompilationErrors, QueryExecutionErrors}
 import org.apache.spark.sql.protobuf.utils.ProtobufUtils
 import org.apache.spark.sql.protobuf.utils.ProtobufUtils.{ProtoMatchedField, toFieldStr}
 import org.apache.spark.sql.types._
-
-import scala.collection.JavaConverters._
 
 /**
  * A serializer to serialize data in catalyst format to data in Protobuf format.
  */
 private[sql] class ProtobufSerializer(
-    rootCatalystType: DataType,
-    rootDescriptor: Descriptor,
-    nullable: Boolean)
-    extends Logging {
+                                       rootCatalystType: DataType,
+                                       rootDescriptor: Descriptor,
+                                       nullable: Boolean)
+  extends Logging {
 
   def serialize(catalystData: Any): Any = {
     converter.apply(catalystData)
@@ -74,10 +73,10 @@ private[sql] class ProtobufSerializer(
   private type Converter = (SpecializedGetters, Int) => Any
 
   private def newConverter(
-      catalystType: DataType,
-      fieldDescriptor: FieldDescriptor,
-      catalystPath: Seq[String],
-      protoPath: Seq[String]): Converter = {
+                            catalystType: DataType,
+                            fieldDescriptor: FieldDescriptor,
+                            catalystPath: Seq[String],
+                            protoPath: Seq[String]): Converter = {
     (catalystType, fieldDescriptor.getJavaType) match {
       case (NullType, _) =>
         (getter, ordinal) => null
@@ -103,13 +102,26 @@ private[sql] class ProtobufSerializer(
         (getter, ordinal) =>
           val data = getter.getUTF8String(ordinal).toString
           if (!enumSymbols.contains(data)) {
-            throw QueryCompilationErrors.cannotConvertCatalystTypeToProtobufEnumTypeError(
+            throw QueryExecutionErrors.cannotConvertCatalystValueToProtobufEnumTypeError(
               catalystPath,
               toFieldStr(protoPath),
               data,
               enumSymbols.mkString("\"", "\", \"", "\""))
           }
           fieldDescriptor.getEnumType.findValueByName(data)
+      case (IntegerType, ENUM) =>
+        val enumValues: Set[Int] =
+          fieldDescriptor.getEnumType.getValues.asScala.map(e => e.getNumber).toSet
+        (getter, ordinal) =>
+          val data = getter.getInt(ordinal)
+          if (!enumValues.contains(data)) {
+            throw QueryExecutionErrors.cannotConvertCatalystValueToProtobufEnumTypeError(
+              catalystPath,
+              toFieldStr(protoPath),
+              data.toString,
+              enumValues.mkString(", "))
+          }
+          fieldDescriptor.getEnumType.findValueByNumber(data)
       case (StringType, STRING) =>
         (getter, ordinal) => {
           String.valueOf(getter.getUTF8String(ordinal))
@@ -160,7 +172,7 @@ private[sql] class ProtobufSerializer(
       case (MapType(kt, vt, valueContainsNull), MESSAGE) =>
         var keyField: FieldDescriptor = null
         var valueField: FieldDescriptor = null
-        fieldDescriptor.getMessageType.getFields.asScala.map { field =>
+        fieldDescriptor.getMessageType.getFields.asScala.foreach { field =>
           field.getName match {
             case "key" =>
               keyField = field
@@ -227,10 +239,10 @@ private[sql] class ProtobufSerializer(
   }
 
   private def newStructConverter(
-      catalystStruct: StructType,
-      descriptor: Descriptor,
-      catalystPath: Seq[String],
-      protoPath: Seq[String]): InternalRow => DynamicMessage = {
+                                  catalystStruct: StructType,
+                                  descriptor: Descriptor,
+                                  catalystPath: Seq[String],
+                                  protoPath: Seq[String]): InternalRow => DynamicMessage = {
 
     val protoSchemaHelper =
       new ProtobufUtils.ProtoSchemaHelper(descriptor, catalystStruct, protoPath, catalystPath)

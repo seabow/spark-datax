@@ -17,9 +17,15 @@
 
 package org.apache.spark.sql.protobuf.utils
 
+import java.io.FileNotFoundException
+import java.nio.file.NoSuchFileException
+import java.util.Locale
+import scala.collection.JavaConverters._
+import scala.util.control.NonFatal
+import com.google.protobuf.{DescriptorProtos, Descriptors, InvalidProtocolBufferException, Message}
 import com.google.protobuf.DescriptorProtos.{FileDescriptorProto, FileDescriptorSet}
 import com.google.protobuf.Descriptors.{Descriptor, FieldDescriptor}
-import com.google.protobuf.{DescriptorProtos, Descriptors, InvalidProtocolBufferException, Message}
+import com.google.protobuf.TypeRegistry
 import io.github.seabow.datax.common.HdfsUtils
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.errors.Implicits.QueryComiplationErrorsImplicit
@@ -28,17 +34,13 @@ import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types._
 import org.apache.spark.util.Utils
 
-import java.io.{BufferedInputStream, FileInputStream, IOException}
-import java.util.Locale
-import scala.collection.JavaConverters._
-
 private[sql] object ProtobufUtils extends Logging {
 
   /** Wrapper for a pair of matched fields, one Catalyst and one corresponding Protobuf field. */
   private[sql] case class ProtoMatchedField(
-      catalystField: StructField,
-      catalystPosition: Int,
-      fieldDescriptor: FieldDescriptor)
+                                             catalystField: StructField,
+                                             catalystPosition: Int,
+                                             fieldDescriptor: FieldDescriptor)
 
   /**
    * Helper class to perform field lookup/matching on Protobuf schemas.
@@ -57,10 +59,10 @@ private[sql] object ProtobufUtils extends Logging {
    *   The seq of parent field names leading to `catalystSchema`.
    */
   class ProtoSchemaHelper(
-      descriptor: Descriptor,
-      catalystSchema: StructType,
-      protoPath: Seq[String],
-      catalystPath: Seq[String]) {
+                           descriptor: Descriptor,
+                           catalystSchema: StructType,
+                           protoPath: Seq[String],
+                           catalystPath: Seq[String]) {
     if (descriptor.getName == null) {
       throw QueryCompilationErrors.unknownProtobufMessageTypeError(
         descriptor.getName,
@@ -138,15 +140,16 @@ private[sql] object ProtobufUtils extends Logging {
    * Builds Protobuf message descriptor either from the Java class or from serialized descriptor
    * read from the file.
    * @param messageName
-   *  Protobuf message name or Java class name.
-   * @param descFilePathOpt
-   *  When the file name set, the descriptor and it's dependencies are read from the file. Other
-   *  the `messageName` is treated as Java class name.
+   *  Protobuf message name or Java class name (when binaryFileDescriptorSet is None)..
+   * @param binaryFileDescriptorSet
+   *  When the binary `FileDescriptorSet` is provided, the descriptor and its dependencies are
+   *  read from it.
    * @return
    */
-  def buildDescriptor(messageName: String, descFilePathOpt: Option[String]): Descriptor = {
-    descFilePathOpt match {
-      case Some(filePath) => buildDescriptor(descFilePath = filePath, messageName)
+  def buildDescriptor(messageName: String, binaryFileDescriptorSet: Option[Array[Byte]])
+  : Descriptor = {
+    binaryFileDescriptorSet match {
+      case Some(bytes) => buildDescriptor(bytes, messageName)
       case None => buildDescriptorFromJavaClass(messageName)
     }
   }
@@ -187,7 +190,7 @@ private[sql] object ProtobufUtils extends Logging {
       val explanation =
         if (unshadedMessageClass.isAssignableFrom(protobufClass)) {
           s"$protobufClassName does not extend shaded Protobuf Message class " +
-          s"${shadedMessageClass.getName}. $missingShadingErrorMessage"
+            s"${shadedMessageClass.getName}. $missingShadingErrorMessage"
         } else s"$protobufClassName is not a Protobuf Message type"
       throw QueryCompilationErrors.protobufClassLoadError(protobufClassName, explanation)
     }
@@ -207,9 +210,9 @@ private[sql] object ProtobufUtils extends Logging {
       .asInstanceOf[Descriptor]
   }
 
-  def buildDescriptor(descFilePath: String, messageName: String): Descriptor = {
+  def buildDescriptor(binaryFileDescriptorSet: Array[Byte], messageName: String): Descriptor = {
     // Find the first message descriptor that matches the name.
-    val descriptorOpt = parseFileDescriptorSet(descFilePath)
+    val descriptorOpt = parseFileDescriptorSet(binaryFileDescriptorSet)
       .flatMap { fileDesc =>
         fileDesc.getMessageTypes.asScala.find { desc =>
           desc.getName == messageName || desc.getFullName == messageName
@@ -222,27 +225,32 @@ private[sql] object ProtobufUtils extends Logging {
     }
   }
 
-  private def parseFileDescriptorSet(descFilePath: String): List[Descriptors.FileDescriptor] = {
+  def readDescriptorFileContent(filePath: String): Array[Byte] = {
+    try {
+      HdfsUtils.readAsByte(filePath)
+    } catch {
+      case ex: FileNotFoundException =>
+        throw QueryCompilationErrors.cannotFindDescriptorFileError(filePath, ex)
+      case ex: NoSuchFileException =>
+        throw QueryCompilationErrors.cannotFindDescriptorFileError(filePath, ex)
+      case NonFatal(ex) => throw QueryCompilationErrors.descriptorParseError(filePath,ex)
+    }
+  }
+
+  private def parseFileDescriptorSet(bytes: Array[Byte]): List[Descriptors.FileDescriptor] = {
     var fileDescriptorSet: DescriptorProtos.FileDescriptorSet = null
     try {
-      fileDescriptorSet = DescriptorProtos.FileDescriptorSet.parseFrom(HdfsUtils.readAsByte(descFilePath))
+      fileDescriptorSet = DescriptorProtos.FileDescriptorSet.parseFrom(bytes)
     } catch {
       case ex: InvalidProtocolBufferException =>
-        throw QueryCompilationErrors.descriptorParseError(descFilePath, ex)
-      case ex: IOException =>
-        throw QueryCompilationErrors.cannotFindDescriptorFileError(descFilePath, ex)
+        throw QueryCompilationErrors.descriptorParseError(cause = ex)
     }
-    try {
-      val fileDescriptorProtoIndex = createDescriptorProtoMap(fileDescriptorSet)
-      val fileDescriptorList: List[Descriptors.FileDescriptor] =
-        fileDescriptorSet.getFileList.asScala.map( fileDescriptorProto =>
-          buildFileDescriptor(fileDescriptorProto, fileDescriptorProtoIndex)
-        ).toList
-      fileDescriptorList
-    } catch {
-      case e: Exception =>
-        throw QueryCompilationErrors.failedParsingDescriptorError(descFilePath, e)
-    }
+    val fileDescriptorProtoIndex = createDescriptorProtoMap(fileDescriptorSet)
+    val fileDescriptorList: List[Descriptors.FileDescriptor] =
+      fileDescriptorSet.getFileList.asScala.map( fileDescriptorProto =>
+        buildFileDescriptor(fileDescriptorProto, fileDescriptorProtoIndex)
+      ).toList
+    fileDescriptorList
   }
 
   /**
@@ -250,12 +258,21 @@ private[sql] object ProtobufUtils extends Logging {
    * FileDescriptorProto and return.
    */
   private def buildFileDescriptor(
-    fileDescriptorProto: FileDescriptorProto,
-    fileDescriptorProtoMap: Map[String, FileDescriptorProto]): Descriptors.FileDescriptor = {
+                                   fileDescriptorProto: FileDescriptorProto,
+                                   fileDescriptorProtoMap: Map[String, FileDescriptorProto]): Descriptors.FileDescriptor = {
     val fileDescriptorList = fileDescriptorProto.getDependencyList().asScala.map { dependency =>
       fileDescriptorProtoMap.get(dependency) match {
         case Some(dependencyProto) =>
-          buildFileDescriptor(dependencyProto, fileDescriptorProtoMap)
+          if (dependencyProto.getName == "google/protobuf/any.proto"
+            && dependencyProto.getPackage == "google.protobuf") {
+            // For Any, use the descriptor already included as part of the Java dependency.
+            // Without this, JsonFormat used for converting Any fields fails when
+            // an Any field in input is set to `Any.getDefaultInstance()`.
+            com.google.protobuf.AnyProto.getDescriptor
+            // Should we do the same for timestamp.proto and empty.proto?
+          } else {
+            buildFileDescriptor(dependencyProto, fileDescriptorProtoMap)
+          }
         case None =>
           throw QueryCompilationErrors.protobufDescriptorDependencyError(dependency)
       }
@@ -267,7 +284,7 @@ private[sql] object ProtobufUtils extends Logging {
    * Returns a map from descriptor proto name as found inside the descriptors to protos.
    */
   private def createDescriptorProtoMap(
-    fileDescriptorSet: FileDescriptorSet): Map[String, FileDescriptorProto] = {
+                                        fileDescriptorSet: FileDescriptorSet): Map[String, FileDescriptorProto] = {
     fileDescriptorSet.getFileList().asScala.map { descriptorProto =>
       descriptorProto.getName() -> descriptorProto
     }.toMap[String, FileDescriptorProto]
@@ -281,5 +298,21 @@ private[sql] object ProtobufUtils extends Logging {
   private[protobuf] def toFieldStr(names: Seq[String]): String = names match {
     case Seq() => "top-level record"
     case n => s"field '${n.mkString(".")}'"
+  }
+
+  /** Builds [[TypeRegistry]] with all the messages found in the descriptor set. */
+  private[protobuf] def buildTypeRegistry(descriptorBytes: Array[Byte]): TypeRegistry = {
+    val registryBuilder = TypeRegistry.newBuilder()
+    for (fileDesc <- parseFileDescriptorSet(descriptorBytes)) {
+      registryBuilder.add(fileDesc.getMessageTypes)
+    }
+    registryBuilder.build()
+  }
+
+  /** Builds [[TypeRegistry]] with the descriptor and the others from the same proto file. */
+  private [protobuf] def buildTypeRegistry(descriptor: Descriptor): TypeRegistry = {
+    TypeRegistry.newBuilder()
+      .add(descriptor) // This adds any other descriptors in the associated proto file.
+      .build()
   }
 }

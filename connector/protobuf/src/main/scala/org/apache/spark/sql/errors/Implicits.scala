@@ -50,7 +50,7 @@ object Implicits {
         messageParameters = Array("messageName:" + messageName))
     }
 
-    def descriptorParseError(descFilePath: String, cause: Throwable): Throwable = {
+    def descriptorParseError(descFilePath: String="", cause: Throwable): Throwable = {
       new AnalysisException(
         errorClass = "CANNOT_PARSE_PROTOBUF_DESCRIPTOR",
         messageParameters = Array("descFilePath:" + descFilePath),
@@ -200,6 +200,20 @@ object Implicits {
           "protobufColumn:" + protobufColumn,
           "sqlType:" + toSQLType(sqlType),
           "protobufType:" + protobufType))
+    }
+
+    def cannotConvertCatalystValueToProtobufEnumTypeError(
+                                                           sqlColumn: Seq[String],
+                                                           protobufColumn: String,
+                                                           data: String,
+                                                           enumString: String): Throwable = {
+      new AnalysisException(
+        errorClass = "CANNOT_CONVERT_SQL_VALUE_TO_PROTOBUF_ENUM_TYPE",
+        messageParameters = Array(
+          "sqlColumn:" + toSQLId(sqlColumn),
+          "protobufColumn:" + protobufColumn,
+          "data:" + data,
+          "enumString:" + enumString))
     }
 
   }

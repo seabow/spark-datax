@@ -16,14 +16,13 @@
  */
 package org.apache.spark.sql.protobuf.utils
 
+import scala.collection.JavaConverters._
 import com.google.protobuf.Descriptors.{Descriptor, FieldDescriptor}
 import org.apache.spark.annotation.DeveloperApi
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.errors.Implicits.QueryComiplationErrorsImplicit
 import org.apache.spark.sql.errors.QueryCompilationErrors
 import org.apache.spark.sql.types._
-
-import scala.collection.JavaConverters._
 
 @DeveloperApi
 object SchemaConverters extends Logging {
@@ -41,14 +40,14 @@ object SchemaConverters extends Logging {
    * @since 3.4.0
    */
   def toSqlType(
-      descriptor: Descriptor,
-      protobufOptions: ProtobufOptions = ProtobufOptions(Map.empty)): SchemaType = {
+                 descriptor: Descriptor,
+                 protobufOptions: ProtobufOptions = ProtobufOptions(Map.empty)): SchemaType = {
     toSqlTypeHelper(descriptor, protobufOptions)
   }
 
   def toSqlTypeHelper(
-      descriptor: Descriptor,
-      protobufOptions: ProtobufOptions): SchemaType = {
+                       descriptor: Descriptor,
+                       protobufOptions: ProtobufOptions): SchemaType = {
     SchemaType(
       StructType(descriptor.getFields.asScala.flatMap(
         structFieldFor(_,
@@ -63,9 +62,9 @@ object SchemaConverters extends Logging {
   // A return of None implies the field has reached the maximum allowed recursive depth and
   // should be dropped.
   def structFieldFor(
-      fd: FieldDescriptor,
-      existingRecordNames: Map[String, Int],
-      protobufOptions: ProtobufOptions): Option[StructField] = {
+                      fd: FieldDescriptor,
+                      existingRecordNames: Map[String, Int],
+                      protobufOptions: ProtobufOptions): Option[StructField] = {
     import com.google.protobuf.Descriptors.FieldDescriptor.JavaType._
     val dataType = fd.getJavaType match {
       case INT => Some(IntegerType)
@@ -75,7 +74,7 @@ object SchemaConverters extends Logging {
       case BOOLEAN => Some(BooleanType)
       case STRING => Some(StringType)
       case BYTE_STRING => Some(BinaryType)
-      case ENUM => if(protobufOptions.castEnumAsInt) Some(IntegerType) else Some(StringType)
+      case ENUM => if (protobufOptions.castEnumAsInt) Some(IntegerType) else Some(StringType)
       case MESSAGE
         if (fd.getMessageType.getName == "Duration" &&
           fd.getMessageType.getFields.size() == 2 &&
@@ -88,6 +87,9 @@ object SchemaConverters extends Logging {
           fd.getMessageType.getFields.get(0).getName.equals("seconds") &&
           fd.getMessageType.getFields.get(1).getName.equals("nanos")) =>
         Some(TimestampType)
+      case MESSAGE if protobufOptions.convertAnyFieldsToJson &&
+        fd.getMessageType.getFullName == "google.protobuf.Any" =>
+        Some(StringType) // Any protobuf will be parsed and converted to json string.
       case MESSAGE if fd.isRepeated && fd.getMessageType.getOptions.hasMapEntry =>
         var keyType: Option[DataType] = None
         var valueType: Option[DataType] = None
@@ -158,7 +160,7 @@ object SchemaConverters extends Logging {
             case Nil =>
               log.info(
                 s"Dropping ${fd.getFullName} as it does not have any fields left " +
-                "likely due to recursive depth limit."
+                  "likely due to recursive depth limit."
               )
               None
             case fds => Some(StructType(fds))
