@@ -17,10 +17,10 @@
 package org.apache.spark.sql.protobuf
 
 import scala.collection.JavaConverters._
-
 import org.apache.spark.annotation.Experimental
 import org.apache.spark.sql.Column
 import org.apache.spark.sql.protobuf.utils.ProtobufUtils
+import org.apache.spark.sql.types.DataType
 
 // scalastyle:off: object.name
 object functions {
@@ -49,6 +49,35 @@ object functions {
     val descriptorFileContent = ProtobufUtils.readDescriptorFileContent(descFilePath)
     from_protobuf(data, messageName, descriptorFileContent, options)
   }
+
+  @Experimental
+  def from_protobuf(
+                     data: Column,
+                     descFilePathCol: Column,
+                     messageName: String,
+                     schema:String
+                    ): Column = {
+    new Column(
+      EvolutionProtobufDataToCatalyst(
+        data.expr, descFilePathCol.expr,messageName,DataType.fromDDL(schema))
+    )
+  }
+
+
+  @Experimental
+  def from_protobuf(
+                     data: Column,
+                     descFilePathCol: Column,
+                     messageName: String,
+                     schema:String,
+                     options: java.util.Map[String, String]): Column = {
+    new Column(
+      EvolutionProtobufDataToCatalyst(
+        data.expr, descFilePathCol.expr,messageName,DataType.fromDDL(schema), options.asScala.toMap
+      )
+    )
+  }
+
 
   /**
    * Converts a binary column of Protobuf format into its corresponding catalyst value.The

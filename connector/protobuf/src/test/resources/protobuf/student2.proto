@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package org.apache.spark.sql.protobuf.protos;
+
+option java_outer_classname = "StudentProto";
+
+message Student {
+  int64 id = 1;
+  string name = 2;
+  int32 age = 3;
+  int64 timestamp = 4;
+  string addition_info=5;
+}
