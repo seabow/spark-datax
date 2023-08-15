@@ -34,6 +34,34 @@ class ProtobufEvalutionTest extends QueryTest with SharedSparkSession with Proto
       StructField("addition_info",StringType,true)
     )
   )
+  val oldStudentSchema=StructType(
+    List(
+      StructField("id",LongType,true),
+      StructField("name",StringType,true),
+      StructField("age",IntegerType,true),
+      StructField("timestamp",LongType,true)
+    )
+  )
+
+  val studentSafeCastSchema=StructType(
+    List(
+      StructField("id",StringType,true),
+      StructField("name",StringType,true),
+      StructField("age",StringType,true),
+      StructField("timestamp",StringType,true),
+      StructField("addition_info",StringType,true)
+    )
+  )
+
+  val studentUnsafeCastSchema=StructType(
+    List(
+      StructField("id",IntegerType,true),
+      StructField("name",StringType,true),
+      StructField("age",StringType,true),
+      StructField("timestamp",StringType,true),
+      StructField("addition_info",StringType,true)
+    )
+  )
 
   val studentData=List(
     Row(1l,"zhang3",19,1600000000l,"info 1"),
@@ -83,7 +111,7 @@ class ProtobufEvalutionTest extends QueryTest with SharedSparkSession with Proto
     stage1DF.show(false)
     //from_proto
     val stage2DF=stage1DF.withColumn("value_after_serde",
-      from_protobuf(col("proto"),col("desc_path"),"Student",studentSchema.toDDL))
+      from_protobuf(col("proto"),col("desc_path"),"Student",studentUnsafeCastSchema.toDDL))
     stage2DF.show(false)
 //    checkAnswer(stage1DF.select(struct($"id",$"name",$"age",$"timestamp",lit(null).as("addition_info")
 //    ).as("value")),stage2DF.select(col("value_after_serde").as("value")))

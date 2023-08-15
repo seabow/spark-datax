@@ -21,6 +21,7 @@ import com.google.protobuf.{ByteString, DynamicMessage, Message, TypeRegistry}
 import com.google.protobuf.Descriptors._
 import com.google.protobuf.Descriptors.FieldDescriptor.JavaType._
 import com.google.protobuf.util.JsonFormat
+import org.apache.spark.internal.Logging
 import org.apache.spark.sql.AnalysisException
 import org.apache.spark.sql.catalyst.{InternalRow, NoopFilters, StructFilters}
 import org.apache.spark.sql.catalyst.expressions._
@@ -39,7 +40,7 @@ private[sql] class ProtobufDeserializer(
                                          filters: StructFilters = new NoopFilters,
                                          typeRegistry: TypeRegistry = TypeRegistry.getEmptyTypeRegistry,
                                          emitDefaultValues: Boolean = false,
-                                         enumsAsInts: Boolean = false) {
+                                         enumsAsInts: Boolean = false) extends Logging {
 
   def this(rootDescriptor: Descriptor, rootCatalystType: DataType) = {
     this(
@@ -274,13 +275,25 @@ private[sql] class ProtobufDeserializer(
         (updater, ordinal, value) =>
           updater.setInt(ordinal, value.asInstanceOf[EnumValueDescriptor].getNumber)
 
+      case (_,StringType)=>
+        (updater, ordinal, value) =>
+          updater.set(
+            ordinal,
+            UTF8String.fromString(value.toString))
       case _ =>
+        try{
         throw QueryCompilationErrors.cannotConvertProtobufTypeToSqlTypeError(
           toFieldStr(protoPath),
           catalystPath,
           s"${protoType} ${protoType.toProto.getLabel} ${protoType.getJavaType}" +
             s" ${protoType.getType}",
           catalystType)
+        }catch {
+          case e: Exception =>
+            log.warn("converter incompatibility.",e)
+            (updater, ordinal, _) =>
+                updater.setNullAt(ordinal)
+        }
     }
   }
 
