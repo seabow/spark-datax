@@ -13,6 +13,8 @@ object ProtobufConnectorConfig{
   val from_col="from_col"
   val to_col="to_col"
   val descriptor_path="descriptor_path"
+  val descriptor_path_col="descriptor_path_col"
+  val schema="schema"
   val msg_name="msg_name"
   val options="options"
 }
@@ -25,10 +27,17 @@ class ProtobufConnector extends Connector{
     val from_col=config.getStringSafely(ProtobufConnectorConfig.from_col)
     val to_col=config.getStringSafely(ProtobufConnectorConfig.to_col)
     val descriptor_path=config.getStringSafely(ProtobufConnectorConfig.descriptor_path)
+    val descriptor_path_col=config.getStringSafely(ProtobufConnectorConfig.descriptor_path_col)
     val msg_name=config.getStringSafely(ProtobufConnectorConfig.msg_name)
     val options=config.getStringMapSafely(ProtobufConnectorConfig.options)
+    val schema=config.getStringSafely(ProtobufConnectorConfig.schema)
     assert(input.nonEmpty)
     val inputDF=job.outputMap(input)
-    inputDF.withColumn(to_col,from_protobuf(col(from_col),msg_name,descriptor_path,options.asJava))
+    if(descriptor_path.nonEmpty && descriptor_path_col.isEmpty)
+      {
+        inputDF.withColumn(to_col,from_protobuf(col(from_col),msg_name,descriptor_path,options.asJava))
+      }else{
+      inputDF.withColumn(to_col,from_protobuf(col(from_col),col(descriptor_path_col),msg_name,schema,options.asJava))
+    }
   }
 }
