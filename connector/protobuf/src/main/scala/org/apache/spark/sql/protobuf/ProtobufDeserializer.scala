@@ -275,6 +275,10 @@ private[sql] class ProtobufDeserializer(
         (updater, ordinal, value) =>
           updater.setInt(ordinal, value.asInstanceOf[EnumValueDescriptor].getNumber)
 
+      case (ENUM, LongType) =>
+        (updater, ordinal, value) =>
+          updater.setLong(ordinal, value.asInstanceOf[EnumValueDescriptor].getNumber)
+
       case (_,StringType)=>
         (updater, ordinal, value) =>
           updater.set(

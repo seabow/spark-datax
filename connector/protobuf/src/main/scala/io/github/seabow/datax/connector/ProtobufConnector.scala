@@ -3,6 +3,7 @@ package io.github.seabow.datax.connector
 import io.github.seabow.datax.core.pipeline.Connector
 import org.apache.spark.sql.DataFrame
 import io.github.seabow.datax.common.ConfigUtils._
+import io.github.seabow.datax.common.SparkUtils
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.protobuf.functions.from_protobuf
 
@@ -15,6 +16,8 @@ object ProtobufConnectorConfig{
   val descriptor_path="descriptor_path"
   val descriptor_path_col="descriptor_path_col"
   val schema="schema"
+  val schema_file="schema_file"
+  val schema_table_col="schema_table_col"
   val msg_name="msg_name"
   val options="options"
 }
@@ -31,13 +34,28 @@ class ProtobufConnector extends Connector{
     val msg_name=config.getStringSafely(ProtobufConnectorConfig.msg_name)
     val options=config.getStringMapSafely(ProtobufConnectorConfig.options)
     val schema=config.getStringSafely(ProtobufConnectorConfig.schema)
+    val schema_file=config.getStringSafely(ProtobufConnectorConfig.schema_file)
+    val schema_table_col=config.getStringSafely(ProtobufConnectorConfig.schema_table_col)
+
+    val structSchema=
+      if(schema_table_col.nonEmpty){
+        val tableAndCol=schema_table_col.split(",")
+        val table=tableAndCol.head
+        val col=tableAndCol.last
+        spark.read.table(table).schema(col).dataType.sql
+      }else if(schema_file.nonEmpty){
+        SparkUtils.getFileContent(schema_file)
+      }else{
+        schema
+      }
+
     assert(input.nonEmpty)
     val inputDF=job.outputMap(input)
     if(descriptor_path.nonEmpty && descriptor_path_col.isEmpty)
       {
         inputDF.withColumn(to_col,from_protobuf(col(from_col),msg_name,descriptor_path,options.asJava))
       }else{
-      inputDF.withColumn(to_col,from_protobuf(col(from_col),col(descriptor_path_col),msg_name,schema,options.asJava))
+      inputDF.withColumn(to_col,from_protobuf(col(from_col),col(descriptor_path_col),msg_name,structSchema,options.asJava))
     }
   }
 }
