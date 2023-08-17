@@ -19,7 +19,7 @@ package org.apache.spark.sql.protobuf
 import java.util.concurrent.TimeUnit
 import com.google.protobuf.{ByteString, DynamicMessage, Message, TypeRegistry}
 import com.google.protobuf.Descriptors._
-import com.google.protobuf.Descriptors.FieldDescriptor.JavaType._
+import com.google.protobuf.Descriptors.FieldDescriptor.JavaType.{INT, _}
 import com.google.protobuf.util.JsonFormat
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.AnalysisException
@@ -193,6 +193,9 @@ private[sql] class ProtobufDeserializer(
       case (INT, ShortType) =>
         (updater, ordinal, value) => updater.setShort(ordinal, value.asInstanceOf[Short])
 
+      case (INT, LongType) =>
+        (updater, ordinal, value) => updater.setLong(ordinal, value.asInstanceOf[Int])
+
       case  (
         MESSAGE | BOOLEAN | INT | FLOAT | DOUBLE | LONG | STRING | ENUM | BYTE_STRING,
         ArrayType(dataType: DataType, containsNull)) if protoType.isRepeated =>
@@ -203,6 +206,9 @@ private[sql] class ProtobufDeserializer(
 
       case (FLOAT, FloatType) =>
         (updater, ordinal, value) => updater.setFloat(ordinal, value.asInstanceOf[Float])
+
+      case (FLOAT, DoubleType) =>
+        (updater, ordinal, value) => updater.setDouble(ordinal, value.asInstanceOf[Float].toDouble)
 
       case (DOUBLE, DoubleType) =>
         (updater, ordinal, value) => updater.setDouble(ordinal, value.asInstanceOf[Double])

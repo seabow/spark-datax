@@ -7,7 +7,7 @@
     <groupId>io.github.seabow</groupId>
     <artifactId>spark-datax</artifactId>
     <packaging>pom</packaging>
-    <version>0.3.2-SNAPSHOT</version>
+    <version>0.3.2</version>
     <name>${project.artifactId}</name>
     <description>A Lucene Datasource of Spark.Supports push down filter and push down aggeragation</description>
     <url>https://github.com/seabow/spark-datax</url>
