@@ -18,6 +18,11 @@ object ProtobufSchemaUtils extends Logging{
     SchemaConverters.toSqlType(descriptor).dataType.sql
   }
 
+  def getProtobuSchema(msgName:String):String={
+    val descriptor=  ProtobufUtils.buildDescriptorFromJavaClass(msgName)
+    SchemaConverters.toSqlType(descriptor).dataType.sql
+  }
+
   def merge(left: DataType, right: DataType): DataType =
     mergeInternal(left, right, (s1: StructType, s2: StructType) => {
       val leftFields = s1.fields

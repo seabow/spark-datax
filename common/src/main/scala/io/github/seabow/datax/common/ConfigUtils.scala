@@ -1,6 +1,7 @@
 package io.github.seabow.datax.common
 
-import com.typesafe.config.{ConfigResolveOptions, _}
+import com.typesafe.config._
+import org.apache.commons.text.StringEscapeUtils
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable
@@ -54,7 +55,7 @@ object ConfigUtils {
     // 先处理自定义的参数
     params.map { case (k, v) =>
       val findStr = "\\$\\{" + k + "\\}"
-      finalConfig = finalConfig.replaceAll(findStr, v)
+      finalConfig = finalConfig.replaceAll(findStr, StringEscapeUtils.escapeXSI(v))
     }
     val paramConfig: Config = ConfigFactory.parseMap(params.asJava)
     val resolveOptions= ConfigResolveOptions.defaults().setAllowUnresolved(true)

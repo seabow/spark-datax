@@ -14,4 +14,7 @@ class ProtobufUtilsTest extends AnyFunSuite {
 //    println(schemas.reduceOption(ProtobufSchemaUtils.merge).get.sql)
 //  }
 
+  test("get sql schema by class"){
+  }
+
 }
