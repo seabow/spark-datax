@@ -2177,6 +2177,10 @@
       }
     }
   },
+  "MISSING_COLUMN" : {
+    "message" : [ "Column '<columnName>' does not exist. Did you mean one of the following? [<proposal>]" ],
+    "sqlState" : "42000"
+  },
   "MISSING_GROUP_BY" : {
     "message" : [
       "The query does not include a GROUP BY clause. Add GROUP BY or turn it into the window functions using OVER clauses."
