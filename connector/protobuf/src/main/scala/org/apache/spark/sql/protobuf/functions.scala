@@ -78,6 +78,20 @@ object functions {
     )
   }
 
+  @Experimental
+  def from_protobuf(
+                     data: Column,
+                     descFilePathCol: Column,
+                     messageNameCol: Column,
+                     schema:String,
+                     options: java.util.Map[String, String]): Column = {
+    new Column(
+      EvolutionProtobufDataToCatalyst3Cols(
+        data.expr, descFilePathCol.expr,messageNameCol.expr,DataType.fromDDL(schema), options.asScala.toMap
+      )
+    )
+  }
+
 
   /**
    * Converts a binary column of Protobuf format into its corresponding catalyst value.The
