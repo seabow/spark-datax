@@ -46,7 +46,7 @@ class HiveConnector extends Connector with Logging{
     var dfToWrite=df
     var dfWriter = dfToWrite.write.mode(writeMode).options(options).format(format)
 
-    if(dfToWrite.isEmpty){
+    if(dfToWrite.schema.isEmpty){
       log.info("input is an empty dataframe,no need to write")
       return value
     }

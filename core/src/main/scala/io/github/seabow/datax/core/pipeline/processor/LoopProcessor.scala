@@ -8,6 +8,9 @@ import org.apache.spark.sql.DataFrame
 
 import scala.collection.convert.ImplicitConversions.`collection AsScalaIterable`
 import scala.collection.mutable.ListBuffer
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent._
+
 
 /**
  * {
@@ -36,7 +39,7 @@ class LoopProcessor extends Processor{
     val inputDF=dfList.head
     val inputFieldNames=inputDF.schema.fieldNames
     val loopList= inputDF.collect().map(_.get(0))
-    val taskName=config.getString("name")
+    val taskName=config.getString("input")
     val loopSize=inputDF.count()
     val loopValuesMap=inputDF.collect().map{
       row=>
@@ -69,22 +72,23 @@ class LoopProcessor extends Processor{
         }
       }
     }else{
-      for(index <- 0l until loopSize){
-        tasksConfigList.map{
+      assert(_yield.isEmpty)
+     val loopTasks= (0l until loopSize).map{
+       index=>
+        val tasks=tasksConfigList.map{
           config=>
             var configJson=config.root().render(ConfigRenderOptions.concise().setFormatted(true))
             loopValuesMap.keySet.foreach{
               key=>
-              configJson.replaceAll("\\#\\{" + key + "\\}", loopValuesMap(key)(index.toInt))
+                configJson= configJson.replaceAll("\\#\\{" + key + "\\}", loopValuesMap(key)(index.toInt))
             }
-            println("loop tasks conf:")
+            println(s"loop task conf [$index]:")
             println(configJson)
             ConfigFactory.parseString(configJson)
-        }.map(Task(_, job)).foreach(_.execute())
-        if(_yield.nonEmpty){
-          yieldDFs.append(job.outputMap(_yield))
-        }
+        }.map(Task(_, job))
+        Future{tasks.foreach(_.execute())}
       }
+      Await.result(Future.sequence(loopTasks), scala.concurrent.duration.Duration.Inf)
     }
 
     if(yieldDFs.nonEmpty){
