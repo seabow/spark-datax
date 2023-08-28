@@ -52,6 +52,8 @@ object CommonConfig {
   val local_sort = "local_sort"
 
   val limit = "limit"
+
+  val cache = "cache"
 }
 
 case class Task(config: Config, job: Job) extends Logging {
@@ -193,6 +195,12 @@ case class Task(config: Config, job: Job) extends Logging {
     if (local_sort.nonEmpty) {
       val localsortCols = local_sort.split(",").map(expr(_))
       outputDF = outputDF.sortWithinPartitions(localsortCols: _*)
+    }
+
+    val cache = config.getBooleanSafely(CommonConfig.cache)
+    if(cache)
+    {
+      outputDF.cache()
     }
 
     job.outputMap(config.getString("name")) = outputDF
