@@ -42,14 +42,18 @@ class LoopProcessor extends Processor{
   override def process(dfList: ListBuffer[DataFrame]): DataFrame = {
     val inputDF=dfList.head
     val inputFieldNames=inputDF.schema.fieldNames
-    val loopList= inputDF.collect().map(_.get(0))
+    val collectedInput=inputDF.collect()
+    val loopSize=collectedInput.size
+    if(loopSize==0){
+      return spark.emptyDataFrame
+    }
+    val loopList= collectedInput.map(_.get(0))
     val taskName=config.getString("input")
     val par=config.getIntSafely(LoopProcessorConfig.par)
-    val loopSize=inputDF.count()
-    val loopValuesMap=inputDF.collect().map{
+    val loopValuesMap=collectedInput.map{
       row=>
         inputFieldNames.map{
-          field=>(taskName+"."+field,Seq(row.getAs[String](field)))
+          field=>(taskName+"."+field,Seq(row.getAs[Any](field).toString))
         }.toMap
     }.reduce{
       (map1, map2) =>
