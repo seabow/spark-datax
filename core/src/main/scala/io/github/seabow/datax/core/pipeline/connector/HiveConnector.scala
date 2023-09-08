@@ -3,6 +3,7 @@ package io.github.seabow.datax.core.pipeline.connector
 import io.github.seabow.datax.common.ConfigUtils.ImplicitConfigUtils
 import io.github.seabow.datax.core.pipeline.Connector
 import org.apache.spark.internal.Logging
+import org.apache.spark.scheduler.{SparkListener, SparkListenerTaskEnd}
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types.StructType
@@ -39,7 +40,7 @@ class HiveConnector extends Connector with Logging{
     val writeMode = config.getString( HiveConnectorConfig.mode, "append")
     val format = config.getString(HiveConnectorConfig.format, "hive" )
 
-    var value = 1
+    var value = 0
 
     var tableExists = spark.catalog.tableExists(s"$table")
 
@@ -51,6 +52,15 @@ class HiveConnector extends Connector with Logging{
       return value
     }
 
+    val recordsWrittenListener=new SparkListener(){
+      override def onTaskEnd(taskEnd: SparkListenerTaskEnd) {
+        synchronized {
+          value = (taskEnd.taskMetrics.outputMetrics.recordsWritten+value).toInt
+        }
+      }
+    }
+
+    spark.sparkContext.addSparkListener(recordsWrittenListener)
 
     try {
       if (!tableExists) {
@@ -87,6 +97,8 @@ class HiveConnector extends Connector with Logging{
         log.error(config.getString("name")+" : write df failed!")
         throw t
     }
+    spark.sparkContext.removeSparkListener(recordsWrittenListener)
+    log.warn(s"$value records written successfully by task ${config.getString("name")} ")
     value
   }
 
