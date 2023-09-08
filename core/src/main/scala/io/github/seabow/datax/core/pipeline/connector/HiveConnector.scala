@@ -2,6 +2,7 @@ package io.github.seabow.datax.core.pipeline.connector
 
 import io.github.seabow.datax.common.ConfigUtils.ImplicitConfigUtils
 import io.github.seabow.datax.core.pipeline.Connector
+import org.apache.spark.Success
 import org.apache.spark.internal.Logging
 import org.apache.spark.scheduler.{SparkListener, SparkListenerTaskEnd}
 import org.apache.spark.sql.DataFrame
@@ -54,6 +55,7 @@ class HiveConnector extends Connector with Logging{
 
     val recordsWrittenListener=new SparkListener(){
       override def onTaskEnd(taskEnd: SparkListenerTaskEnd) {
+        if(taskEnd.reason==Success)
         synchronized {
           value = (taskEnd.taskMetrics.outputMetrics.recordsWritten+value).toInt
         }
