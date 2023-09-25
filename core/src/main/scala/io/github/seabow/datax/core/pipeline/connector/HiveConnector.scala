@@ -43,8 +43,8 @@ class HiveConnector extends Connector with Logging{
 
     var value = 0
 
-    var tableExists = spark.catalog.tableExists(s"$table")
-
+    //对iceberg表暂不支持自动建表。
+    var tableExists = format.equals("iceberg") || spark.catalog.tableExists(s"$table")
     var dfToWrite=df
     var dfWriter = dfToWrite.write.mode(writeMode).options(options).format(format)
 
@@ -90,6 +90,11 @@ class HiveConnector extends Connector with Logging{
       {
         log.warn(s"insertInto:$table")
         dfToWrite =reorderDataFrame(df,spark.read.table(table).schema)
+        //默认partitionOverwriteMode=dynamic
+        if(!options.contains("partitionOverwriteMode"))
+          {
+            options.put("partitionOverwriteMode", "dynamic")
+          }
         dfWriter = dfToWrite.write.mode(writeMode).options(options).format(format)
         dfWriter.insertInto(s"$table")
       }
