@@ -14,6 +14,7 @@ object HiveConnectorConfig{
   def partition_by = "partition_by"
   //partition_spec as: partition_col_1='partition_value_1',partition_col_2='partition_value_2'
   def partition_spec = "partition_spec"
+  def partition_cols = "partition_cols"
   def mode = "mode"
   def options = "options"
   def format="format"
@@ -40,6 +41,7 @@ class HiveConnector extends Connector with Logging{
     val partitionSpec=config.getStringSafely(HiveConnectorConfig.partition_spec)
     val writeMode = config.getString( HiveConnectorConfig.mode, "append")
     val format = config.getString(HiveConnectorConfig.format, "hive" )
+    val partition_cols=config.getStringSafely(HiveConnectorConfig.partition_cols)
 
     var value = 0
 
@@ -94,6 +96,12 @@ class HiveConnector extends Connector with Logging{
         if(!options.contains("partitionOverwriteMode"))
           {
             options.put("partitionOverwriteMode", "dynamic")
+          }
+          if(partition_cols.nonEmpty){
+            partition_cols.split(",").foreach{
+              partition_col=>
+              dfToWrite=dfToWrite.withColumn(partition_col,coalesce(col(partition_col),lit("_default_partition_value")))
+            }
           }
         dfWriter = dfToWrite.write.mode(writeMode).options(options).format(format)
         dfWriter.insertInto(s"$table")
