@@ -104,7 +104,11 @@ class HiveConnector extends Connector with Logging{
             }
           }
         dfWriter = dfToWrite.write.mode(writeMode).options(options).format(format)
-        dfWriter.insertInto(s"$table")
+        if(format.equals("iceberg") && writeMode.equalsIgnoreCase("overwrite")){
+          dfToWrite.writeTo(s"$table").options(options).overwritePartitions()
+        }else{
+          dfWriter.insertInto(s"$table")
+        }
       }
 
     } catch {
