@@ -42,6 +42,7 @@ object DataX extends Logging {
     try{
       job.execute()
     }finally{
+      spark.close()
       job.close()
     }
   }
