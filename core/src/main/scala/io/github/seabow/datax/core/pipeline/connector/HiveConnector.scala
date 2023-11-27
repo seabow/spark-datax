@@ -79,9 +79,10 @@ class HiveConnector extends Connector with Logging{
         dfToWrite=df.select(fieldsWithoutPartition.map(col(_)):_*)
         val tmpViewName=config.getString("name")
         dfToWrite.createOrReplaceTempView(tmpViewName)
+        val sqlWriteMode=if (writeMode.equalsIgnoreCase("OVERWRITE") ) writeMode else "into"
         val sql=
           s"""
-            | INSERT $writeMode $table
+            | INSERT $sqlWriteMode $table
             | PARTITION ( $partitionSpec )
             | SELECT * FROM $tmpViewName
             |
