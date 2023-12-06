@@ -203,6 +203,23 @@ object functions {
   }
 
   /**
+   *
+   * @param data
+   * @param messageClassName
+   * @param options
+   * @param schema support for customized schema
+   * @return
+   */
+
+  def from_protobuf(
+                     data: Column,
+                     messageClassName: String,
+                     options: java.util.Map[String, String],schema:String): Column = {
+    new Column(ProtobufDataToCatalyst(data.expr, messageClassName, None, options.asScala.toMap,
+      Some(DataType.fromDDL(schema))))
+  }
+
+  /**
    * Converts a column into binary of protobuf format. The Protobuf definition is provided
    * through Protobuf <i>descriptor file</i>.
    *

@@ -32,13 +32,16 @@ private[sql] case class ProtobufDataToCatalyst(
                                                 child: Expression,
                                                 messageName: String,
                                                 binaryFileDescriptorSet: Option[Array[Byte]] = None,
-                                                options: Map[String, String] = Map.empty)
+                                                options: Map[String, String] = Map.empty,
+                                                schema:Option[DataType]=None)
   extends UnaryExpression
     with ExpectsInputTypes {
 
   override def inputTypes: Seq[AbstractDataType] = Seq(BinaryType)
 
-  override lazy val dataType: DataType = {
+  override lazy val dataType: DataType = if (schema.isDefined) {
+    schema.get}
+  else{
     val dt = SchemaConverters.toSqlType(messageDescriptor, protobufOptions).dataType
     parseMode match {
       // With PermissiveMode, the output Catalyst row might contain columns of null values for
