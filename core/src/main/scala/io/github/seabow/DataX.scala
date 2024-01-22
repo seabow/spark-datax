@@ -15,6 +15,7 @@ object DataX extends Logging {
       .set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
       .set("spark.hadoop.mapreduce.fileoutputcommitter.algorithm.version", "2")
       .set("spark.hadoop.mapreduce.fileoutputcommitter.cleanup.skipped", "true")
+//      .set("spark.hadoop.mapreduce.fileoutputcommitter.cleanup-failures.ignored", "true")
       .set("spark.sql.sources.partitionOverwriteMode", "dynamic")
       .set("spark.sql.broadcastTimeout", "3000")
     //获取参数

@@ -61,12 +61,12 @@ class ProtobufConnector extends Connector {
       inputDF.withColumn(to_col, from_protobuf(col(from_col), col(descriptor_path_col), msg_name, structSchema, options.asJava))
     } else {
       //msg_name only
-      if(schema.isEmpty)
+      if(structSchema.isEmpty)
         {
           inputDF.withColumn(to_col, from_protobuf(col(from_col), msg_name, options.asJava))
         }
         else{
-        inputDF.withColumn(to_col, from_protobuf(col(from_col), msg_name, options.asJava,schema))
+        inputDF.withColumn(to_col, from_protobuf(col(from_col), msg_name, options.asJava,structSchema))
       }
     }
   }
