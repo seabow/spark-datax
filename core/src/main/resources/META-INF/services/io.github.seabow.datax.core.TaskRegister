@@ -5,3 +5,4 @@ io.github.seabow.datax.core.pipeline.processor.SqlProcessor
 io.github.seabow.datax.core.pipeline.processor.AutoProjectionProcessor
 io.github.seabow.datax.core.pipeline.processor.LoopProcessor
 io.github.seabow.datax.core.pipeline.processor.AssertProcessor
+io.github.seabow.datax.core.pipeline.processor.FsToolProcessor

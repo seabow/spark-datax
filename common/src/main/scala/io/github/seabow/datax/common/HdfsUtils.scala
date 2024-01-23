@@ -1,6 +1,6 @@
 package io.github.seabow.datax.common
 
-import org.apache.hadoop.fs.{FileStatus, FileSystem, Path}
+import org.apache.hadoop.fs.{ContentSummary, FileStatus, FileSystem, Path}
 
 import java.io.InputStream
 import scala.util.Try
@@ -85,6 +85,8 @@ object HdfsUtils {
   def delete(path: String): Boolean = hdfs(path.toPath).delete(path.toPath, true)
 
   def status(path: String): Array[FileStatus] = hdfs(path.toPath).listStatus(path.toPath)
+
+  def getContentSummary(path: String): ContentSummary = hdfs(path.toPath).getContentSummary(path.toPath)
 
   def touch(path: String): Boolean = {
     if (!exist(path)) {
