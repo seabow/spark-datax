@@ -10,6 +10,7 @@ object FileConnectorConfig{
   def options="options"
   def schema="schema"
   def mode = "mode"
+  def partition_by="partition_by"
 }
 
 class FileConnector extends Connector with Logging{
@@ -37,6 +38,7 @@ class FileConnector extends Connector with Logging{
     val writeMode = config.getString( FileConnectorConfig.mode, "overwrite")
     val path = config.getStringSafely( FileConnectorConfig.path).stripSuffix("/")
     val options=config.getStringMapSafely(FileConnectorConfig.options)
+    val partition_by=config.getStringSafely(FileConnectorConfig.partition_by)
     var value = 1
 
     df.printSchema()
@@ -44,6 +46,9 @@ class FileConnector extends Connector with Logging{
     var dfWriter=df.write.mode(writeMode).options(options)
     if(format.nonEmpty){
       dfWriter=dfWriter.format(format)
+    }
+    if(partition_by.nonEmpty){
+      dfWriter=dfWriter.partitionBy(partition_by.split(","):_*)
     }
 
     try {

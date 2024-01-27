@@ -46,6 +46,6 @@ class FsToolProcessor extends Processor with Logging {
     }(RowEncoder(newSchema))
   }
 
-  override def shortName(): String = "assert"
+  override def shortName(): String = "fs_tool"
 }
 
