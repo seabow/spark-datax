@@ -21,6 +21,7 @@ case class Job(configContent: String, params: Map[String, String]=Map.empty, val
     println(conf.root().render( ConfigRenderOptions.concise().setFormatted(true)))
     conf
   }
+  var tasks=Seq.empty[Task]
 
   def setJobAttr():Unit={
     var base_dir=jobConfig.getString("base_dir","")
@@ -37,17 +38,17 @@ case class Job(configContent: String, params: Map[String, String]=Map.empty, val
   }
 
   def execute(): Unit = {
-    val tasks = compile()
+    tasks = compile()
     if (!HdfsUtils.exist(jobDir)) {
       log.info(s"Make job dir $jobDir")
       HdfsUtils.mkdir(jobDir)
     }
     HdfsUtils.hdfs(new Path(jobDir)).deleteOnExit(new Path(jobDir))
     tasks.foreach(_.execute())
-
   }
 
    def close(): Unit = {
+     tasks.foreach(_.clear())
      if (HdfsUtils.exist(jobDir)) {
        if(HdfsUtils.delete(jobDir)){
          log.info(s"Deleted job dir $jobDir")

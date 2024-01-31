@@ -1,9 +1,10 @@
 package io.github.seabow.datax.core.pipeline
 
+import io.github.seabow.TaskCleaner
 import io.github.seabow.datax.core.{ContextLoader, TaskRegister}
 import org.apache.spark.sql.DataFrame
 
-trait Connector extends TaskRegister with ContextLoader{
+trait Connector extends TaskRegister with ContextLoader with TaskCleaner{
   /**
    *
    * @return DataFrame

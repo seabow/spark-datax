@@ -1,6 +1,7 @@
 package io.github.seabow.datax.core
 
 import com.typesafe.config.Config
+import io.github.seabow.TaskCleaner
 import io.github.seabow.datax.common.ConfigUtils._
 import io.github.seabow.datax.core.pipeline.{Connector, Processor}
 import org.apache.spark.datax.utils.ClassLoaderUtils
@@ -58,6 +59,12 @@ object CommonConfig {
 
 case class Task(config: Config, job: Job) extends Logging {
   def taskConfig: Config = config
+  var taskCleaner:TaskCleaner = _
+  def clear(): Unit ={
+     if(taskCleaner!=null){
+       taskCleaner.clear()
+     }
+  }
 
   def execute(): Unit = {
     val shortName = config.getString("type")
@@ -68,12 +75,14 @@ case class Task(config: Config, job: Job) extends Logging {
         job.outputMap(config.getStringSafely("name")) = connector.read()
         dealWithReaderConfig()
         dealWithCommonConfig()
+        taskCleaner=connector
       case "writer" =>
         job.outputMap(config.getString("name")) = job.outputMap(config.getString("input"))
         dealWithCommonConfig()
         val connector = ClassLoaderUtils.getPipelineInstance(shortName).asInstanceOf[Connector]
         connector.config(config).job(job)
         connector.write(job.outputMap(config.getString("name")))
+        taskCleaner=connector
       case "processor" =>
         val input = config.getStringSafely("input")
         val dfList = new ListBuffer[DataFrame]
@@ -88,6 +97,7 @@ case class Task(config: Config, job: Job) extends Logging {
         processor.config(config).job(job)
         job.outputMap(config.getString("name")) = processor.process(dfList)
         dealWithCommonConfig()
+        taskCleaner=processor
     }
   }
 
