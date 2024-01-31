@@ -49,6 +49,7 @@ case class Job(configContent: String, params: Map[String, String]=Map.empty, val
 
    def close(): Unit = {
      tasks.foreach(_.clear())
+     SparkSession.getActiveSession.get.close()
      if (HdfsUtils.exist(jobDir)) {
        if(HdfsUtils.delete(jobDir)){
          log.info(s"Deleted job dir $jobDir")
