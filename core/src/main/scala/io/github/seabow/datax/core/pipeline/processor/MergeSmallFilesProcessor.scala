@@ -6,9 +6,10 @@ import io.github.seabow.datax.core.pipeline.Processor
 import org.apache.hadoop.fs.FileStatus
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.catalyst.encoders.RowEncoder
-import org.apache.spark.sql.types.LongType
+import org.apache.spark.sql.types.{LongType, StringType, StructField, StructType}
 import org.apache.spark.sql.{DataFrame, Row}
 
+import scala.collection.JavaConverters._
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{Await, Future}
@@ -39,15 +40,31 @@ class MergeSmallFilesProcessor extends Processor with Logging {
     spark.sqlContext.setConf("spark.sql.adaptive.enabled","true")
     val inputDF = dfList(0)
     def getPartitionSpecAndLocation(table:String):(String,String)={
-      val createStatDF=spark.sql(s"show create table $table")
-      val createDDL=createStatDF.collect().head.getString(0).replaceAll("\n"," ")
-      val partten=""".*PARTITIONED BY \((.*)\) LOCATION '(.*)' TBLPROPERTIES .*""".r
-      val partten(partitionSpec,location)=createDDL
-      (partitionSpec,location)
+      val describeDF=spark.sql(s"describe EXTENDED $table")
+      val location=describeDF.collect().filter(_.getAs[String]("col_name").equals("Location")).head.getAs[String]("data_type")
+      var startCollectPartitionColsFlag=false
+      var partitionSpec=ListBuffer.empty[String]
+      describeDF.collect().foreach{
+        r=>
+          if(r.getAs[String]("col_name").equals("# Detailed Table Information")){
+            startCollectPartitionColsFlag=false
+          }
+          if(startCollectPartitionColsFlag){
+            partitionSpec.append(r.getAs[String]("col_name"))
+          }
+          if(r.getAs[String]("col_name").equals("# col_name")){
+            startCollectPartitionColsFlag=true
+        }
+      }
+      (partitionSpec.filter(_.nonEmpty).mkString(","),location)
     }
     def getPartitionStats(partitionDirs: Seq[FileStatus]): Array[Row] = {
-      import spark.implicits._
-      val dirsDF = partitionDirs.map(status=>Seq(status.getPath.toString,status.getModificationTime)).toDF("path","modify_time")
+      val dirsDF = spark.createDataFrame(partitionDirs.map(status=>Row.fromSeq(Seq(status.getPath.toString,status.getModificationTime))).toList.asJava,
+        StructType(
+          List(
+            StructField("path",StringType,true),
+            StructField("modify_time", LongType, true)))
+      )
       val newSchema = dirsDF.schema.add("content_summary_length", LongType
       ).add("content_summary_dir_cnt", LongType
       ).add("content_summary_file_cnt", LongType
@@ -92,7 +109,7 @@ class MergeSmallFilesProcessor extends Processor with Logging {
             val fileCount = partition.getAs[Long]("content_summary_file_cnt")
             val dirCount = partition.getAs[Long]("content_summary_dir_cnt")
             //如果分区需要合并(平均文件大小<target_file_size_mb*75% 且 fileCount/dirsCount+1>=5)，则继续
-            val needToMerge=(fileLength/ (fileCount+1)<target_file_size_mb*1024*1024*0.75) &&(fileCount/(dirCount+1)>=5)
+            val needToMerge=(fileLength/ (fileCount+1)<target_file_size_mb*1024*1024*0.75) &&(fileCount/dirCount>=5)
             if(needToMerge){
               //计算当前partitionGroup是否已经满了
               val isGroupFull= (currentGroupDirs+dirCount>max_dirs_per_group) ||(currentGroupLength+fileLength) > max_gb_per_group *1024*1024*1024l
@@ -124,7 +141,7 @@ class MergeSmallFilesProcessor extends Processor with Logging {
           val mergeSql=  s"""insert overwrite $table
               |select * from $table
               |where $topPartitionCol in ($topPartitions)
-              |distributed by $partitionSpec""".stripMargin
+              |distribute by $partitionSpec""".stripMargin
             log.warn(s"$mergeSql")
            spark.sql(mergeSql)
         }
