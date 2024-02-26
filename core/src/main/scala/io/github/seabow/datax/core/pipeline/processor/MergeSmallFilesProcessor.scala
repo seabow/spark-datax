@@ -9,10 +9,11 @@ import org.apache.spark.sql.catalyst.encoders.RowEncoder
 import org.apache.spark.sql.types.{LongType, StringType, StructField, StructType}
 import org.apache.spark.sql.{DataFrame, Row}
 
+import java.util.concurrent.Executors
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.{Await, Future}
+import scala.concurrent.{Await, ExecutionContext, ExecutionContextExecutor, Future}
 
 object MergeSmallFilesProcessorConfig {
   val table_col = "table_col"
@@ -20,6 +21,7 @@ object MergeSmallFilesProcessorConfig {
   val target_file_size_mb="target_file_size_mb"
   val max_dirs_per_group="max_dirs_per_group"
   val max_gb_per_group="max_gb_per_group"
+  val concurrent_merge_group_size="concurrent_merge_group_size"
 }
 
 //两种合并模式:
@@ -34,9 +36,11 @@ class MergeSmallFilesProcessor extends Processor with Logging {
     val table_col=config.getString(MergeSmallFilesProcessorConfig.table_col,"table_name")
     val reserve_days=config.getInt(MergeSmallFilesProcessorConfig.reserve_days,7)
     val target_file_size_mb=config.getInt(MergeSmallFilesProcessorConfig.target_file_size_mb,128)
-    val max_dirs_per_group=config.getInt(MergeSmallFilesProcessorConfig.target_file_size_mb,1000)
-    val max_gb_per_group=config.getInt(MergeSmallFilesProcessorConfig.max_gb_per_group,100)
-    spark.sqlContext.setConf("spark.sql.adaptive.advisoryPartitionSizeInBytes",(target_file_size_mb*1024*10224).toString)
+    val max_dirs_per_group=config.getInt(MergeSmallFilesProcessorConfig.max_dirs_per_group,1000)
+    val max_gb_per_group=config.getInt(MergeSmallFilesProcessorConfig.max_gb_per_group,25)
+    val concurrent_merge_group_size=config.getInt(MergeSmallFilesProcessorConfig.concurrent_merge_group_size,5)
+    spark.sqlContext.setConf("spark.sql.adaptive.advisoryPartitionSizeInBytes",(target_file_size_mb*1024*1024).toString)
+//    spark.sqlContext.setConf("spark.sql.adaptive.coalescePartitions.parallelismFirst","false")
     spark.sqlContext.setConf("spark.sql.adaptive.enabled","true")
     val inputDF = dfList(0)
     def getPartitionSpecAndLocation(table:String):(String,String)={
@@ -89,6 +93,9 @@ class MergeSmallFilesProcessor extends Processor with Logging {
           ).map(_.get)
       }(RowEncoder(newSchema)).collect()
     }
+    //支持指定单表并发合并的partitionGroup。
+    val executor: ExecutionContextExecutor = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(concurrent_merge_group_size))
+
     inputDF.collect().foreach{
       r=>
         val table=r.getAs[String](table_col)
@@ -130,7 +137,7 @@ class MergeSmallFilesProcessor extends Processor with Logging {
 
         //依次处理partitionGroups的合并
         val partitionValuePattern=".*=(.*)".r
-        partitionGroups.foreach{
+       val mergeTasks= partitionGroups.map{
           partitionGroup=>
             val topPartitions=partitionGroup.map{r=>
               val path=r.getAs[String]("path")
@@ -143,8 +150,9 @@ class MergeSmallFilesProcessor extends Processor with Logging {
               |where $topPartitionCol in ($topPartitions)
               |distribute by $partitionSpec""".stripMargin
             log.warn(s"$mergeSql")
-           spark.sql(mergeSql)
+            Future{spark.sql(mergeSql)}(executor)
         }
+        Await.result(Future.sequence(mergeTasks), scala.concurrent.duration.Duration.Inf)
     }
     spark.emptyDataFrame
   }
