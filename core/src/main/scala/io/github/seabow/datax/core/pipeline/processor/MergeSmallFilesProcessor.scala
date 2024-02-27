@@ -184,9 +184,9 @@ class MergeSmallFilesProcessor extends Processor with Logging {
            log.warn(mergeSql)
            spark.sql(mergeSql)
            df.unpersist
-         }
+         }(executor)
           mergeTasks.append(mergeTask)
-        }(executor)
+        }
     }
     Await.result(Future.sequence(mergeTasks), scala.concurrent.duration.Duration.Inf)
   }
