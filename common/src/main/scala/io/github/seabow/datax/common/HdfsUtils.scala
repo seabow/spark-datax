@@ -88,6 +88,8 @@ object HdfsUtils {
 
   def getContentSummary(path: String): ContentSummary = hdfs(path.toPath).getContentSummary(path.toPath)
 
+  def getStatus(path: String): FileStatus = hdfs(path.toPath).getFileStatus(path.toPath)
+
   def touch(path: String): Boolean = {
     if (!exist(path)) {
       hdfs(path.toPath).createNewFile(path.toPath)
