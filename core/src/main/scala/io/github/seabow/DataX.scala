@@ -2,6 +2,7 @@ package io.github.seabow
 
 import io.github.seabow.datax.common.{ParameterUtils, SparkUtils}
 import io.github.seabow.datax.core.Job
+import org.apache.log4j.Level
 import org.apache.spark.SparkConf
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.SparkSession
@@ -32,6 +33,8 @@ object DataX extends Logging {
       .config(conf)
       .enableHiveSupport()
       .getOrCreate()
+    org.apache.log4j.LogManager.getRootLogger.setLevel(Level.WARN)
+    spark.sparkContext.setLogLevel("WARN")
     val appId = spark.sparkContext.applicationId
     val uiWebUrl = spark.sparkContext.uiWebUrl
     log.warn(s"application id : $appId")
