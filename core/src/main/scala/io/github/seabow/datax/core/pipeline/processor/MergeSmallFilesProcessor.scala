@@ -90,25 +90,36 @@ class MergeSmallFilesProcessor extends Processor with Logging {
                             max_gb_per_group:Int,
                             concurrent_merge_group_size:Int):Unit= {
     val (partitionSpec,location)=getPartitionSpecAndLocation(table)
+    var dynamic_mode="dynamic"
+    if(partitionSpec.size>1){
+      //TODO 当partition col size>1时，若分区数>30000,则使用partial_dynamic
+      val partitionCount=spark.sql(s"show partitions $table").count()
+      if(partitionCount>30000){
+        dynamic_mode="partial_dynamic"
+      }
+    }
     val executor: ExecutionContextExecutor = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(concurrent_merge_group_size))
     // 遍历一级分区，对待合并分区进行分组，输出partitionGroups
     //顺序:old first; 分区数量:100, 限制:排除modifytime xx天以内的分区，大小:最大单次合并100G。
     val partitionDirs=HdfsUtils.listDirs(location).filter(_.getPath.toString.contains("=")
     ).filter(System.currentTimeMillis()-_.getModificationTime>reserve_days*24*60*60*1000l).toSeq
     val partitionStats=getPartitionStats(partitionDirs).sortBy(_.getAs[Long]("modify_time"))
-    var partitionGroups=ListBuffer.empty[ListBuffer[Row]]
-    var currentPartitionGroup=ListBuffer.empty[Row]
-    var currentGroupLength=0l
-    var currentGroupDirs=0l
-    partitionStats.foreach{
-      partition=>
-        val fileLength = partition.getAs[Long]("content_summary_length")
-        val fileCount = partition.getAs[Long]("content_summary_file_cnt")
-        val dirCount = partition.getAs[Long]("content_summary_dir_cnt")
-        //如果分区需要合并(平均文件大小<target_file_size_mb*75% 且 fileCount/dirsCount+1>=5)，则继续
-        val needToMerge=(fileLength/ (fileCount+1)<target_file_size_mb*1024*1024*0.75) &&(fileCount/dirCount>=5)
-        if(needToMerge){
-          //计算当前partitionGroup是否已经满了
+    def needToMerge(partition:Row):Boolean = {
+      val fileLength = partition.getAs[Long]("content_summary_length")
+      val fileCount = partition.getAs[Long]("content_summary_file_cnt")
+      val dirCount = partition.getAs[Long]("content_summary_dir_cnt")
+      (fileLength/ (fileCount+1)<target_file_size_mb*1024*1024*0.75) &&(fileCount/dirCount>=5)
+    }
+    def splitToPartitionGroups(partitionStats:Array[Row]):ListBuffer[ListBuffer[Row]]={
+      var partitionGroups=ListBuffer.empty[ListBuffer[Row]]
+      var currentPartitionGroup=ListBuffer.empty[Row]
+      var currentGroupLength=0l
+      var currentGroupDirs=0l
+      partitionStats.foreach{
+        partition=>
+          val fileLength = partition.getAs[Long]("content_summary_length")
+          val fileCount = partition.getAs[Long]("content_summary_file_cnt")
+          val dirCount = partition.getAs[Long]("content_summary_dir_cnt")
           val isGroupFull= (currentGroupDirs+dirCount>max_dirs_per_group) ||(currentGroupLength+fileLength) > max_gb_per_group *1024*1024*1024l
           if (isGroupFull){
             partitionGroups.append(currentPartitionGroup)
@@ -119,32 +130,53 @@ class MergeSmallFilesProcessor extends Processor with Logging {
           currentPartitionGroup.append(partition)
           currentGroupLength=currentGroupLength+fileLength
           currentGroupDirs=currentGroupDirs+dirCount
-        }
+      }
+      if(currentPartitionGroup.nonEmpty){
+        partitionGroups.append(currentPartitionGroup)
+      }
+      partitionGroups
     }
-    if(currentPartitionGroup.nonEmpty){
-      partitionGroups.append(currentPartitionGroup)
+    val partitionStatsToMerge=partitionStats.filter(needToMerge)
+    if(dynamic_mode.equals("dynamic")){
+     val partitionGroups= splitToPartitionGroups(partitionStatsToMerge)
+      //依次处理partitionGroups的合并
+      val partitionValuePattern=".*=(.*)".r
+      val mergeTasks= partitionGroups.map{
+        partitionGroup=>
+          val topPartitions=partitionGroup.map{r=>
+            val path=r.getAs[String]("path")
+            val partitionValuePattern(partitionValue)=path
+            s"'$partitionValue'"
+          }.mkString(",")
+          val topPartitionCol=partitionSpec.split(",").head
+          val mergeSql=  s"""insert overwrite $table
+                            |select * from $table
+                            |where $topPartitionCol in ($topPartitions)
+                            |distribute by $partitionSpec""".stripMargin
+          Future{
+            log.warn(s"$mergeSql")
+            spark.sql(mergeSql)
+          }(executor)
+      }
+      Await.result(Future.sequence(mergeTasks), scala.concurrent.duration.Duration.Inf)
+    }else if(dynamic_mode.equals("partial_dynamic")){
+     val mergeTasks= partitionStatsToMerge.map{
+        partition=>
+          val path=partition.getAs[String]("path")
+         val staticPart= path.split("/").filter(_.contains("=")).map(_.split("=")).map(array=> s"${array.head}='${array.last}'")
+         val dynamicPart= partitionSpec.split(",").tail.mkString(",")
+          //TODO 应该从desc table中获取文件存储的格式。
+         val mergeSql=s"""insert overwrite $table partition($staticPart,$dynamicPart)
+              | select * from parquet.`$path`
+              | distribute by $dynamicPart
+              |""".stripMargin
+          Future{
+            log.warn(s"$mergeSql")
+            spark.sql(mergeSql)
+          }(executor)
+      }.toSeq
+      Await.result(Future.sequence(mergeTasks), scala.concurrent.duration.Duration.Inf)
     }
-
-    //依次处理partitionGroups的合并
-    val partitionValuePattern=".*=(.*)".r
-    val mergeTasks= partitionGroups.map{
-      partitionGroup=>
-        val topPartitions=partitionGroup.map{r=>
-          val path=r.getAs[String]("path")
-          val partitionValuePattern(partitionValue)=path
-          s"'$partitionValue'"
-        }.mkString(",")
-        val topPartitionCol=partitionSpec.split(",").head
-        val mergeSql=  s"""insert overwrite $table
-                          |select * from $table
-                          |where $topPartitionCol in ($topPartitions)
-                          |distribute by $partitionSpec""".stripMargin
-        Future{
-          log.warn(s"$mergeSql")
-          spark.sql(mergeSql)
-        }(executor)
-    }
-    Await.result(Future.sequence(mergeTasks), scala.concurrent.duration.Duration.Inf)
   }
 
   def staticPartitionMerge(table:String,reserve_days:Int,
@@ -156,7 +188,7 @@ class MergeSmallFilesProcessor extends Processor with Logging {
 
     val partitions=spark.sql(s"show partitions $table").collect().map(_.getString(0))
     val (_,location)=getPartitionSpecAndLocation(table)
-    val partitionDirs=partitions.map(p=>location.stripSuffix("/")+"/"+p).map(HdfsUtils.getStatus(_)
+    val partitionDirs=partitions.map(p=>location.stripSuffix("/")+"/"+p).filter(HdfsUtils.exist).map(HdfsUtils.getStatus
     ).filter(System.currentTimeMillis()-_.getModificationTime>reserve_days*24*60*60*1000l).toSeq
     val partitionStats=getPartitionStats(partitionDirs).sortBy(_.getAs[Long]("modify_time"))
     val mergeTasks=ListBuffer.empty[Future[Any]]
@@ -176,14 +208,12 @@ class MergeSmallFilesProcessor extends Processor with Logging {
           val tempViewName=table.split("\\.").last+"_"+tempViewSuffix
           val targetFileCount=fileLength/(target_file_size_mb*1024*1024) + 1
          val mergeTask=Future {
-           val df = spark.read.parquet(partitionPath).repartition(targetFileCount.toInt)
-           df.persist
-           df.count
+           val df = spark.read.parquet(partitionPath).repartition(targetFileCount.toInt).checkpoint()
            df.createOrReplaceTempView(tempViewName)
            val mergeSql = s"""insert overwrite $table partition (${partitionSpecs.mkString(",")}) select * from $tempViewName"""
            log.warn(mergeSql)
            spark.sql(mergeSql)
-           df.unpersist
+           spark.catalog.dropTempView(tempViewName)
          }(executor)
           mergeTasks.append(mergeTask)
         }
@@ -219,6 +249,7 @@ class MergeSmallFilesProcessor extends Processor with Logging {
         log.warn(s"start merge table $table")
         if(dynamic_merge_mode.equalsIgnoreCase("dynamic"))
           {
+            //TODO
             dynamicPartitionMerge(table, reserve_days, target_file_size_mb, max_dirs_per_group, max_gb_per_group, concurrent_merge_group_size)
           }
         else{

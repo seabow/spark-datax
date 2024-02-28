@@ -18,6 +18,7 @@ object DataX extends Logging {
 //      .set("spark.hadoop.mapreduce.fileoutputcommitter.cleanup-failures.ignored", "true")
       .set("spark.sql.sources.partitionOverwriteMode", "dynamic")
       .set("spark.sql.broadcastTimeout", "3000")
+      .set("spark.cleaner.referenceTracking.cleanCheckpoints", "true")
     //获取参数
     val params = ParameterUtils.getParameters(args)
     //默认位置和获取的参数。
