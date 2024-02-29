@@ -20,6 +20,11 @@ object DataX extends Logging {
       .set("spark.sql.sources.partitionOverwriteMode", "dynamic")
       .set("spark.sql.broadcastTimeout", "3000")
       .set("spark.cleaner.referenceTracking.cleanCheckpoints", "true")
+//
+    if(!conf.contains("spark.cleaner.periodicGC.interval")){
+      log.warn("spark.cleaner.periodicGC.interval is not set, use 3min as default.")
+      conf.set("spark.cleaner.periodicGC.interval", "3min")
+    }
     //获取参数
     val params = ParameterUtils.getParameters(args)
     //默认位置和获取的参数。
@@ -34,7 +39,6 @@ object DataX extends Logging {
       .enableHiveSupport()
       .getOrCreate()
     org.apache.log4j.LogManager.getRootLogger.setLevel(Level.WARN)
-    spark.sparkContext.setLogLevel("WARN")
     val appId = spark.sparkContext.applicationId
     val uiWebUrl = spark.sparkContext.uiWebUrl
     log.warn(s"application id : $appId")

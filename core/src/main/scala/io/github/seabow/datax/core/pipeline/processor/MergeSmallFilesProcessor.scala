@@ -59,7 +59,7 @@ class MergeSmallFilesProcessor extends Processor with Logging {
         List(
           StructField("path",StringType,true),
           StructField("modify_time", LongType, true)))
-    )
+    ).repartition(partitionDirs.size/10+1)
     val newSchema = dirsDF.schema.add("content_summary_length", LongType
     ).add("content_summary_dir_cnt", LongType
     ).add("content_summary_file_cnt", LongType
@@ -191,9 +191,6 @@ class MergeSmallFilesProcessor extends Processor with Logging {
               spark.sql(mergeSql)
             }catch {
               case e=>
-                log.warn(s"skipped $mergeSql")
-                log.warn(e.getMessage)
-                //TODO
                 val showPartitionsSql=s"show partitions $table partition ($staticPart)"
                 val partitions=spark.sql(showPartitionsSql).collect().map(_.getString(0))
                 staticPartitionsMergeInternal(table,partitions,reserve_days,target_file_size_mb,"dir",staticExecutor)
