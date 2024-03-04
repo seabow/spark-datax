@@ -1,8 +1,9 @@
 package io.github.seabow.datax.core.pipeline.processor
 
 import io.github.seabow.datax.common.ConfigUtils._
-import io.github.seabow.datax.common.HdfsUtils
+import io.github.seabow.datax.common.{HdfsUtils, HiveUtils}
 import io.github.seabow.datax.core.pipeline.Processor
+import org.apache.hadoop.fs.FileStatus
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.catalyst.encoders.RowEncoder
 import org.apache.spark.sql.types.LongType
@@ -16,6 +17,7 @@ import java.util.concurrent.Executors
 import scala.concurrent.ExecutionContext
 object FsToolProcessorConfig {
   val path_col = "path_col"
+  val table_col="table_col"
   val op = "op"
 
 }
@@ -73,13 +75,72 @@ class FsToolProcessor extends Processor with Logging {
     }
     spark.emptyDataFrame
   }
+
+  //用途:iceberg表delete+expire_snapshots无法清理分区目录的补充实现。
+  def clearIcebergEmptyPartition(inputDF: DataFrame, table_col: String): DataFrame = {
+    val tables=inputDF.select(table_col).collect().map(_.getString(0))
+    val executor = Executors.newFixedThreadPool(20) // 这里设置了最大线程数为10
+    val ec = ExecutionContext.fromExecutorService(executor)
+    tables.foreach{
+      table=>
+        //获取table一级分区相对路径
+        val (_,location)=HiveUtils.getPartitionSpecAndLocation("iceberg."+table)
+        val partitions=spark.sql(s"select partition from iceberg.$table.partitions").collect().map{
+          r=>
+            val partitionRow=r.getAs[Row](0)
+            partitionRow.schema.fieldNames.head+"="+r.getAs[Row](0).get(0).toString
+        }.toSet
+      val partitionToDel= HdfsUtils.listDirs(location+"/data").filter{
+          fileStatus=>
+            val path=fileStatus.getPath.toString
+            val partition=path.split("/").last
+            !partitions.contains(partition)
+        }.map(_.getPath.toString)
+       deleteObjectStorageDirs(partitionToDel,ec)
+    }
+    spark.emptyDataFrame
+  }
+
+  def recurseDelete(status: FileStatus,ec:ExecutionContext): Future[Any] = {
+    if (status.isDirectory) {
+      if (status.getLen > 0) {
+        val eventualUnits = HdfsUtils.listStatus(status.getPath.toString).map {
+          status =>
+            recurseDelete(status,ec)
+        }
+        Await.result(Future.sequence(eventualUnits.toSeq), scala.concurrent.duration.Duration.Inf)
+      }
+      Future{
+        HdfsUtils.delete(status.getPath.toString)
+        println(s"Deleted ${status.getPath.toString}")
+      }(ec)
+    }
+    else {
+      Future {
+        HdfsUtils.delete(status.getPath.toString);
+        println(s"Deleted ${status.getPath.toString}")
+      }(ec)
+    }
+  }
+
+  def deleteObjectStorageDir(dirPath:String,ec:ExecutionContext):Unit={
+      Await.result(recurseDelete(HdfsUtils.getStatus(dirPath),ec),Duration.Inf)
+  }
+
+  def deleteObjectStorageDirs(dirPaths:Seq[String],ec:ExecutionContext):Unit={
+    val delTasks=dirPaths.map(dirPath=>recurseDelete(HdfsUtils.getStatus(dirPath),ec))
+    Await.result(Future.sequence(delTasks),Duration.Inf)
+  }
+
   override def process(dfList: ListBuffer[DataFrame]): DataFrame = {
     val path_col = config.getString(FsToolProcessorConfig.path_col, "path")
+    val table_col  = config.getString(FsToolProcessorConfig.table_col, "table_name")
     val op = config.getString(FsToolProcessorConfig.op, "get_content_summary")
     val inputDF = dfList(0)
     val result = op match {
       case "get_content_summary" => getContentSummary(inputDF, path_col)
       case "clear_temporary_directory" => clearTemporaryDirectory(inputDF, path_col)
+      case "clear_iceberg_empty_partition" => clearIcebergEmptyPartition(inputDF, table_col)
     }
     result
   }

@@ -78,6 +78,8 @@ object HdfsUtils {
 
   def listFiles(p: String): Array[FileStatus] = hdfs(p.toPath).listStatus(p.toPath).filter(_.isFile)
 
+  def listStatus(p: String): Array[FileStatus] = hdfs(p.toPath).listStatus(p.toPath)
+
   def exist(p: String): Boolean = hdfs(p.toPath).exists(p.toPath)
 
   def mkdir(path: String): Boolean = hdfs(path.toPath).mkdirs(path.toPath)
