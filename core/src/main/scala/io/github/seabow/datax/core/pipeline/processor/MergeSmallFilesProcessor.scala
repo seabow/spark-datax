@@ -160,7 +160,8 @@ class MergeSmallFilesProcessor extends Processor with Logging {
                             |where $topPartitionCol in ($topPartitions)
                             |distribute by $partitionSpec""".stripMargin
           val mergeTask=Future{
-            spark.sparkContext.setJobGroup(s"dynamic merge $table partition group ${partitionGroupIndex.getAndIncrement()}/${partitionGroups.size}",s"merge partition group ${partitionGroupIndex.getAndIncrement()}/${partitionGroups.size} $topPartitionCol in ($topPartitions)")
+            val currentIndex = partitionGroupIndex.getAndIncrement()
+            spark.sparkContext.setJobGroup(s"dynamic merge $table partition group $currentIndex/${partitionGroups.size}",s"merge partition group $currentIndex/${partitionGroups.size} $topPartitionCol in ($topPartitions)")
             try{
               executeMergeSql(mergeSql)
             }catch {
