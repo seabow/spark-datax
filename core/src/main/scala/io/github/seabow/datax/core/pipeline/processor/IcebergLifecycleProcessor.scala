@@ -23,7 +23,11 @@ class IcebergLifecycleProcessor extends Processor with Logging {
 
   def clearTable(tableName: String, retainDays: Int, catalogType: String): Unit = {
     val (partitionSpec, location) = IcebergUtils.getPartitionSpecAndLocation(tableName)
-    val needToClearDir = HdfsUtils.listDirs(location+"/data").filter(
+    val iceberegTableDataDir=location+"/data"
+    if(!HdfsUtils.exist(iceberegTableDataDir)){
+      return
+    }
+    val needToClearDir = HdfsUtils.listDirs(iceberegTableDataDir).filter(
       System.currentTimeMillis() - _.getModificationTime > retainDays.day.toMillis).map(_.getPath.toString)
     log.warn(s"$tableName need to clear ${needToClearDir.size} directories.")
     if (needToClearDir.nonEmpty) {
@@ -37,9 +41,18 @@ class IcebergLifecycleProcessor extends Processor with Logging {
       IcebergUtils.expireSnapshotsWithSpark(tableName, catalogType)
       //步骤三.删除目录。
       spark.sparkContext.setJobDescription(s"clear ${needToClearDir.size} dirs:${needToClearDir.mkString(",")}")
-      spark.sparkContext.parallelize(needToClearDir).foreach {
-        dir =>
-          HdfsUtils.delete(dir)
+      spark.sparkContext.parallelize(needToClearDir).foreachPartition {
+        dirs:Iterator[String] =>
+          val executor = Executors.newFixedThreadPool(20) // 这里设置了最大线程数为20
+          val ec = ExecutionContext.fromExecutorService(executor)
+          val clearTasks=ListBuffer.empty[Future[Any]]
+          dirs.foreach{
+            dir=>
+              val clearTask=Future{HdfsUtils.delete(dir)}(ec)
+            clearTasks.append(clearTask)
+          }
+          Await.result(Future.sequence(clearTasks),Duration.Inf)
+          println("Partition Done!")
       }
     }
   }
@@ -49,7 +62,7 @@ class IcebergLifecycleProcessor extends Processor with Logging {
     val catalog_type = config.getString(IcebergLifecycleProcessorConfig.catalog_type, "hive")
     val concurrent_clear_tables = config.getInt(IcebergLifecycleProcessorConfig.concurrent_clear_tables, 5)
     val inputDF = dfList.head
-    val executor = Executors.newFixedThreadPool(concurrent_clear_tables) // 这里设置了最大线程数为20
+    val executor = Executors.newFixedThreadPool(concurrent_clear_tables)
     val ec = ExecutionContext.fromExecutorService(executor)
     val clearTasks = ListBuffer.empty[Future[Any]]
     val tablesClearInfos = inputDF.collect()
