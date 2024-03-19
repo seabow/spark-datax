@@ -1,6 +1,6 @@
 import com.typesafe.config.ConfigFactory
-import io.github.seabow.datax.core.Job
 import io.github.seabow.datax.core.pipeline.processor.LoopProcessor
+import io.github.seabow.datax.core.{Job, SparkSessionTestWrapper}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.funsuite.AnyFunSuite
 

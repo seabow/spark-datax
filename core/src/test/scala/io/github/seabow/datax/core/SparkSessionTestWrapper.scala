@@ -13,7 +13,8 @@ trait SparkSessionTestWrapper {
       .config("spark.testing.memory", "2718592000")
       .config("spark.local.dir", "target/tmp")
       .config("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
-      .config("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
+      .config("spark.hive.exec.dynamic.partition.mode", "nonstrict")
+      .enableHiveSupport()
       .getOrCreate()
   }
 
