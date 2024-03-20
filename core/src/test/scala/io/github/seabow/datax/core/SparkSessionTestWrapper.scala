@@ -14,6 +14,10 @@ trait SparkSessionTestWrapper {
       .config("spark.local.dir", "target/tmp")
       .config("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
       .config("spark.hive.exec.dynamic.partition.mode", "nonstrict")
+      .config("spark.sql.catalog.spark_catalog", "org.apache.iceberg.spark.SparkSessionCatalog")
+      .config("spark.sql.catalog.spark_catalog.type", "hive")
+      .config("spark.sql.extensions", "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions")
+      .config("spark.hive.metastore.schema.verification", "false")
       .enableHiveSupport()
       .getOrCreate()
   }

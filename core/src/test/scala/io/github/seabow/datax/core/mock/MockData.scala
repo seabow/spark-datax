@@ -59,4 +59,8 @@ object MockData {
   def mockPartitionTableDDL(tableName:String):String={
     s"create table if not exists $tableName (${userDefinedSchema_01.fields.dropRight(2).map(_.toDDL).mkString(",")}) using orc partitioned by (ImpDay string,ImpHour string)"
   }
+
+  def mockIcebergPartitionTableDDL(tableName:String):String={
+    s"create table if not exists $tableName (${userDefinedSchema_01.toDDL}) using iceberg partitioned by (ImpDay,ImpHour)"
+  }
 }

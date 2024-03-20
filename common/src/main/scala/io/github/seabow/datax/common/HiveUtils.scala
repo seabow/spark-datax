@@ -25,4 +25,11 @@ object HiveUtils {
     }
     (partitionSpec.filter(_.nonEmpty).mkString(","),location)
   }
+
+  def getProvider(table:String):String={
+    val spark=SparkSession.active
+    val describeInfo=spark.sql(s"describe EXTENDED $table").collect()
+    val provider=describeInfo.filter(_.getAs[String]("col_name").equals("Provider")).head.getAs[String]("data_type")
+    provider
+  }
 }
