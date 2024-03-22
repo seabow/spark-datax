@@ -1,4 +1,4 @@
-/*
+package io.github.seabow.datax.core.testutils;/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -125,14 +125,14 @@ public class TestHiveMetastore {
   private HiveClientPool clientPool;
 
   /**
-   * Starts a TestHiveMetastore with the default connection pool size (5) and the default HiveConf.
+   * Starts a io.github.seabow.datax.core.testutils.TestHiveMetastore with the default connection pool size (5) and the default HiveConf.
    */
   public void start() {
     start(new HiveConf(new Configuration(), TestHiveMetastore.class), DEFAULT_POOL_SIZE);
   }
 
   /**
-   * Starts a TestHiveMetastore with the default connection pool size (5) with the provided
+   * Starts a io.github.seabow.datax.core.testutils.TestHiveMetastore with the default connection pool size (5) with the provided
    * HiveConf.
    *
    * @param conf The hive configuration to use
@@ -142,7 +142,7 @@ public class TestHiveMetastore {
   }
 
   /**
-   * Starts a TestHiveMetastore with a provided connection pool size and HiveConf.
+   * Starts a io.github.seabow.datax.core.testutils.TestHiveMetastore with a provided connection pool size and HiveConf.
    *
    * @param conf The hive configuration to use
    * @param poolSize The number of threads in the executor pool
@@ -166,7 +166,7 @@ public class TestHiveMetastore {
 
       this.clientPool = new HiveClientPool(1, hiveConf);
     } catch (Exception e) {
-      throw new RuntimeException("Cannot start TestHiveMetastore", e);
+      throw new RuntimeException("Cannot start io.github.seabow.datax.core.testutils.TestHiveMetastore", e);
     }
   }
 

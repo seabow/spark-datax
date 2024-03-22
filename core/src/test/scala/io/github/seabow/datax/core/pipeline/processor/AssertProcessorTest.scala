@@ -1,16 +1,12 @@
 package io.github.seabow.datax.core.pipeline.processor
 
-import io.github.seabow.datax.core.SparkSessionTestWrapper
-import org.apache.spark.sql.internal.StaticSQLConf.CATALOG_IMPLEMENTATION
-import org.scalatest.funsuite.AnyFunSuite
+import io.github.seabow.datax.core.BasePipelineTest
 
 import scala.collection.mutable.ListBuffer
 
-class AssertProcessorTest extends AnyFunSuite with SparkSessionTestWrapper{
+class AssertProcessorTest  extends BasePipelineTest{
 
   test("test assert fail") {
-    println(spark.sqlContext.getConf(CATALOG_IMPLEMENTATION.key))
-
     val df = spark.sql("select false")
     try{
     val value=new AssertProcessor().process(ListBuffer(df))

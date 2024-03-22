@@ -1,12 +1,12 @@
+package io.github.seabow.datax.core.pipeline.connector
+
 import com.typesafe.config.ConfigFactory
 import io.github.seabow.datax.core.pipeline.processor.LoopProcessor
-import io.github.seabow.datax.core.{Job, SparkSessionTestWrapper}
-import org.scalatest.BeforeAndAfterAll
-import org.scalatest.funsuite.AnyFunSuite
+import io.github.seabow.datax.core.{BasePipelineTest, Job}
 
 import scala.collection.mutable.ListBuffer
 
-class LoopProcessorTest extends  AnyFunSuite with BeforeAndAfterAll with SparkSessionTestWrapper{
+class LoopProcessorTest extends BasePipelineTest{
   test("simple loop processor use var"){
     import spark.implicits._
     val dataDF = Seq(1, 2, 3).toDF("param")
@@ -65,7 +65,6 @@ class LoopProcessorTest extends  AnyFunSuite with BeforeAndAfterAll with SparkSe
   }
 
   test("simple loop processor use input params"){
-    import spark.implicits._
     val config=
       """
         |

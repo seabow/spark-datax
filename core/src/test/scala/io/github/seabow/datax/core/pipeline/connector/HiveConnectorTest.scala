@@ -1,8 +1,10 @@
+package io.github.seabow.datax.core.pipeline.connector
+
 import com.typesafe.config.ConfigFactory
 import io.github.seabow.datax.common.HiveUtils
 import io.github.seabow.datax.core.BasePipelineTest
 import io.github.seabow.datax.core.mock.MockData
-import io.github.seabow.datax.core.pipeline.connector.HiveConnector
+import io.github.seabow.datax.core.testutils.TestHiveMetastore
 import org.apache.hadoop.hive.conf.HiveConf.ConfVars.METASTOREURIS
 import org.apache.iceberg.CatalogUtil
 import org.apache.iceberg.catalog.Namespace

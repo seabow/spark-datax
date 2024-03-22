@@ -1,11 +1,10 @@
 package io.github.seabow.datax.core.pipeline.processor
 
-import io.github.seabow.datax.core.SparkSessionTestWrapper
-import org.scalatest.funsuite.AnyFunSuite
+import io.github.seabow.datax.core.BasePipelineTest
 
 import scala.collection.mutable.ListBuffer
 
-class MergeSmallFilesProcessorTest extends AnyFunSuite with SparkSessionTestWrapper{
+class MergeSmallFilesProcessorTest  extends BasePipelineTest{
 
   test("test extract partition by and location") {
     val createDDL=
