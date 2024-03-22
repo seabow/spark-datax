@@ -10,6 +10,7 @@ import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types.StructType
+import org.apache.spark.sql.utils.SparkCatalogUtils
 
 import scala.collection.mutable
 
@@ -47,7 +48,8 @@ class HiveConnector extends Connector with Logging{
 
 
     //对iceberg表暂不支持自动建表。
-    val tableExists = spark.catalog.tableExists(s"$table")
+    val tableExists = SparkCatalogUtils.tableExists(table)
+
     var format="hive"
     if(tableExists){
       val provider=HiveUtils.getProvider(table)
@@ -142,3 +144,4 @@ class HiveConnector extends Connector with Logging{
   }
 
 }
+

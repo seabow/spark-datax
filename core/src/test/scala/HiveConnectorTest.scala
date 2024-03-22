@@ -19,8 +19,8 @@ class HiveConnectorTest  extends  BasePipelineTest{
      metastore.start()
      val hiveConf=metastore.hiveConf()
      spark.conf.set("spark.hadoop." + METASTOREURIS.varname, hiveConf.get(METASTOREURIS.varname))
-    val catalog=CatalogUtil.loadCatalog(classOf[HiveCatalog].getName,"hive",Map.empty[String,String].asJava,hiveConf).asInstanceOf[HiveCatalog]
-    try catalog.createNamespace(Namespace.of("default"))
+    val catalog=CatalogUtil.loadCatalog(classOf[HiveCatalog].getName,"iceberg",Map.empty[String,String].asJava,hiveConf).asInstanceOf[HiveCatalog]
+    try catalog.createNamespace(Namespace.of("test_db"))
     catch {
       case ignored: AlreadyExistsException =>
       // the default namespace already exists. ignore the create error
@@ -147,6 +147,44 @@ class HiveConnectorTest  extends  BasePipelineTest{
 
   test("write to exist iceberg table") {
     val tableName="exist_iceberg_partition_table"
+    dropTable(tableName)
+    spark.sql(MockData.mockIcebergPartitionTableDDL(tableName))
+    val config=
+      s"""
+         |    {
+         |      name:"write"
+         |      type:"hive"
+         |      stage:"writer"
+         |      mode:"overwrite"
+         |      table:"$tableName"
+         |    }
+         |""".stripMargin
+    val configObject=ConfigFactory.parseString(config)
+    hiveConnector.config(configObject)
+    val filteredMockDF=mockDF.filter("ImpDay='20230529' and ImpHour='01'")
+    hiveConnector.write(filteredMockDF)
+    val actualDF=spark.read.table(tableName)
+    assertSmallDatasetEquality(actualDF,filteredMockDF)
+
+    val config2=
+      s"""
+         |    {
+         |      name:"write2"
+         |      type:"hive"
+         |      stage:"writer"
+         |      mode:"append"
+         |      table:"$tableName"
+         |    }
+         |""".stripMargin
+    hiveConnector.config(ConfigFactory.parseString(config2))
+    hiveConnector.write(filteredMockDF)
+    val actualDF2=spark.read.table(tableName)
+    assertSmallDatasetEquality(actualDF2,filteredMockDF.unionAll(filteredMockDF))
+    dropTable(tableName)
+  }
+
+  test("write to exist iceberg table with sparkCatalog") {
+    val tableName="iceberg.test_db.exist_iceberg_partition_table"
     dropTable(tableName)
     spark.sql(MockData.mockIcebergPartitionTableDDL(tableName))
     val config=

@@ -9,7 +9,7 @@
     <packaging>pom</packaging>
     <version>0.3.9-SNAPSHOT</version>
     <name>${project.artifactId}</name>
-    <description>A Lucene Datasource of Spark.Supports push down filter and push down aggeragation</description>
+    <description>A configurable ETL spark framework</description>
     <url>https://github.com/seabow/spark-datax</url>
 
 
