@@ -4,8 +4,6 @@ import com.typesafe.config.ConfigFactory
 import io.github.seabow.datax.common.HiveUtils
 import io.github.seabow.datax.core.BasePipelineTest
 import io.github.seabow.datax.core.mock.MockData
-import io.github.seabow.datax.core.testutils.TestHiveMetastore
-import org.apache.hadoop.hive.conf.HiveConf.ConfVars.METASTOREURIS
 import org.apache.iceberg.CatalogUtil
 import org.apache.iceberg.catalog.Namespace
 import org.apache.iceberg.exceptions.AlreadyExistsException
@@ -15,12 +13,9 @@ import scala.collection.JavaConverters._
 
 class HiveConnectorTest  extends  BasePipelineTest{
   val hiveConnector= new HiveConnector
-  val metastore= new TestHiveMetastore
 
   override def beforeAll(){
-     metastore.start()
-     val hiveConf=metastore.hiveConf()
-     spark.conf.set("spark.hadoop." + METASTOREURIS.varname, hiveConf.get(METASTOREURIS.varname))
+    val hiveConf=metastore.hiveConf()
     val catalog=CatalogUtil.loadCatalog(classOf[HiveCatalog].getName,"iceberg",Map.empty[String,String].asJava,hiveConf).asInstanceOf[HiveCatalog]
     try catalog.createNamespace(Namespace.of("test_db"))
     catch {
@@ -29,9 +24,6 @@ class HiveConnectorTest  extends  BasePipelineTest{
     }
   }
 
-  override def afterAll(): Unit ={
-    metastore.stop()
-  }
 //
   test("overwrite to existing table"){
     //create a test hive table
@@ -266,10 +258,5 @@ class HiveConnectorTest  extends  BasePipelineTest{
       mockDF.orderBy("ImpDay","ImpHour"))
     dropTable(tableName)
     dropTable(icebergTableName)
-  }
-
-
-  def dropTable(tableName:String):Unit = {
-    spark.sql(s"DROP TABLE IF EXISTS $tableName")
   }
 }

@@ -1,11 +1,15 @@
 package io.github.seabow.datax.core
 
+import io.github.seabow.datax.core.testutils.TestHiveMetastore
+import org.apache.hadoop.hive.conf.HiveConf.ConfVars.METASTOREURIS
 import org.apache.spark.sql.SparkSession
 
 trait SparkSessionTestWrapper {
 
-  val spark: SparkSession = {
-    SparkSession
+  val (spark,metastore) = {
+    val hiveMetastore= new TestHiveMetastore
+    hiveMetastore.start()
+    val sparkSession= SparkSession
       .builder()
       .master("local")
       .appName("spark session")
@@ -20,8 +24,10 @@ trait SparkSessionTestWrapper {
       .config("spark.sql.catalog.iceberg.type", "hive")
       .config("spark.sql.extensions", "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions")
       .config("spark.hive.metastore.schema.verification", "false")
+      .config("spark.hadoop." + METASTOREURIS.varname, hiveMetastore.hiveConf().get(METASTOREURIS.varname))
       .enableHiveSupport()
       .getOrCreate()
+    (sparkSession,hiveMetastore)
   }
 
   def getConfContentFromPath(confPath: String): String = {

@@ -2,9 +2,10 @@ io.github.seabow.datax.core.pipeline.connector.FileConnector
 io.github.seabow.datax.core.pipeline.connector.HiveConnector
 io.github.seabow.datax.core.pipeline.processor.JoinProcessor
 io.github.seabow.datax.core.pipeline.processor.SqlProcessor
-io.github.seabow.datax.core.pipeline.processor.AutoProjectionProcessor
 io.github.seabow.datax.core.pipeline.processor.LoopProcessor
 io.github.seabow.datax.core.pipeline.processor.AssertProcessor
 io.github.seabow.datax.core.pipeline.processor.FsToolProcessor
 io.github.seabow.datax.core.pipeline.processor.MergeSmallFilesProcessor
 io.github.seabow.datax.core.pipeline.processor.IcebergLifecycleProcessor
+io.github.seabow.datax.core.pipeline.processor.FsContentSummaryProcessor
+io.github.seabow.datax.core.pipeline.processor.TempDirCleanProcessor

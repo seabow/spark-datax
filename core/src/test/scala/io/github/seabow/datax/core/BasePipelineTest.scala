@@ -7,4 +7,7 @@ import org.scalatest.funsuite.AnyFunSuite
 
 class BasePipelineTest   extends  AnyFunSuite with BeforeAndAfterAll with DatasetComparer with SparkSessionTestWrapper{
   val mockDF=MockData.mockDF
+  def dropTable(tableName:String):Unit = {
+    spark.sql(s"DROP TABLE IF EXISTS $tableName")
+  }
 }
