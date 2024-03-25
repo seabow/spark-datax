@@ -3,6 +3,7 @@ package io.github.seabow.datax.core.pipeline.processor
 import io.github.seabow.datax.common.ConfigUtils._
 import io.github.seabow.datax.common.{FutureUtils, HdfsUtils}
 import io.github.seabow.datax.core.pipeline.Processor
+import org.apache.hadoop.fs.FileStatus
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.{DataFrame, Row}
 
@@ -23,32 +24,39 @@ class TempDirCleanProcessor extends Processor with Logging {
       partition: Iterator[Row] =>
         val clearTasks: ListBuffer[Future[Any]] = ListBuffer.empty
         val ec = FutureUtils.buildExecutorContext(executorThreads)
+        /**
+         *see {@link org.apache.spark.sql.execution.datasources.SQLHadoopMapReduceCommitProtocol} for details
+         */
+        def getTempDirOrFiles(tablePath:String):Seq[FileStatus] = {
+          val dirs=HdfsUtils.listDirs(tablePath)
+          val stagingDirs=dirs.filter(_.getPath.toString.contains(".spark-staging-"))
+          val tmpDirOrFiles=dirs.filter(_.getPath.toString.contains("_temporary")
+          ).map(tmpDir=>HdfsUtils.listDirs(tmpDir.getPath.toString)
+          ).flatten.map(attemptDir=>HdfsUtils.listDirs(attemptDir.getPath.toString)
+          ).flatten.map(leafTempDir=>HdfsUtils.listDirs(leafTempDir.getPath.toString)).flatten
+          stagingDirs++tmpDirOrFiles
+        }
         partition.foreach {
           r =>
-            //FIXME: 当partitionOverwriteMode=dynamic时，temp目录格式为 .spark-staging-${job-id}/
-            /**
-             *see {@link org.apache.spark.sql.execution.datasources.SQLHadoopMapReduceCommitProtocol} for details
-             */
-            val tmpDir = r.getAs[String](path_col) + "/_temporary/0/_temporary/"
-            if (HdfsUtils.exist(tmpDir)) {
-              HdfsUtils.listDirs(tmpDir).foreach { status =>
+              getTempDirOrFiles(r.getAs[String](path_col)).foreach { status =>
                 if (System.currentTimeMillis - status.getModificationTime > reserveHours * 60 * 60 * 1000) {
                   val clearTask = Future {
-                    HdfsUtils.delete(status.getPath.toString);
-                    println(s"Deleted ${status.getPath.toString}")
+                    try{
+                      HdfsUtils.delete(status.getPath.toString);
+                      println(s"Deleted ${status.getPath.toString}")
+                    }catch {
+                      case e: Throwable =>
+                    }
                   }(ec)
                   clearTasks.append(clearTask)
                 }
               }
-            }
         }
         Await.result(Future.sequence(clearTasks), Duration.Inf)
         println("Partition done.")
     }
     spark.emptyDataFrame
   }
-
-
 
   override def process(dfList: ListBuffer[DataFrame]): DataFrame = {
     val path_col = config.getString(TempDirCleanProcessorConfig.path_col, "path")
