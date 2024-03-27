@@ -23,10 +23,10 @@ trait SparkSessionTestWrapper {
       .config("spark.sql.catalog.iceberg", "org.apache.iceberg.spark.SparkCatalog")
       .config("spark.sql.catalog.iceberg.type", "hive")
       .config("spark.sql.extensions", "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions")
-      .config("spark.hive.metastore.schema.verification", "false")
       .config("spark.hadoop." + METASTOREURIS.varname, hiveMetastore.hiveConf().get(METASTOREURIS.varname))
       .enableHiveSupport()
       .getOrCreate()
+      sparkSession.sparkContext.setCheckpointDir("target/tmp/checkpoint")
     (sparkSession,hiveMetastore)
   }
 

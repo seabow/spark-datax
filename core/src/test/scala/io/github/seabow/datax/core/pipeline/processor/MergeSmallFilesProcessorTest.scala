@@ -1,28 +1,123 @@
 package io.github.seabow.datax.core.pipeline.processor
 
+import com.typesafe.config.ConfigFactory
+import io.github.seabow.datax.common.{HdfsUtils, HiveUtils}
 import io.github.seabow.datax.core.BasePipelineTest
+import io.github.seabow.datax.core.mock.MockData
+import org.apache.spark.sql.internal.SQLConf
 
 import scala.collection.mutable.ListBuffer
 
 class MergeSmallFilesProcessorTest  extends BasePipelineTest{
+  val processor=new MergeSmallFilesProcessor
 
-  test("test extract partition by and location") {
-    val createDDL=
-      """
-        |CREATE TABLE dwd.dwd_rams_cdm_perception_objects_1h_i ( uuid STRING COMMENT '', trigger_time BIGINT COMMENT '', vehicle_uuid STRING COMMENT '', vehicle_id STRING COMMENT '', model_type STRING COMMENT '', adc_version STRING COMMENT '', app_uuid STRING COMMENT '', publish_ts BIGINT COMMENT '', publish_ptp_ts BIGINT COMMENT '', perception_objects STRUCT<timestamp: STRING, staticobj: ARRAY<STRUCT<obs_age: BIGINT, obs_id: BIGINT, obs_type: BIGINT, obs_type_probability: DOUBLE, obs_lat_distance: DOUBLE, obs_lat_distance_std: DOUBLE, obs_long_distance: DOUBLE, obs_long_distance_std: DOUBLE, obs_object_length: DOUBLE, obs_object_length_std: DOUBLE, obs_object_width: DOUBLE, obs_object_width_std: DOUBLE, obs_object_height: DOUBLE, obs_object_height_std: DOUBLE, source: BIGINT, lidar_cluster_object: STRUCT<lidar_cluster_class: BIGINT, lidar_cluster_probability: DOUBLE, lidar_cluster_velocity: STRUCT<lco_long_velocity: DOUBLE, lco_long_velocity_std: DOUBLE, lco_lat_velocity: DOUBLE, lco_lat_velocity_std: DOUBLE, lco_up_velocity: DOUBLE, lco_up_velocity_std: DOUBLE>, lidar_cluster_motion_state: BIGINT, lidar_cluster_points_num: BIGINT, lidar_cluster_points_height_max: DOUBLE, lidar_cluster_points_height_min: DOUBLE, lidar_cluster_points_height_ground: DOUBLE, lidar_cluster_polygon: ARRAY<STRUCT<lidar_point_2d_x: DOUBLE, lidar_point_2d_y: DOUBLE>>, lidar_cluster_polygon_min_height: ARRAY<DOUBLE>, lidar_cluster_polygon_max_height: ARRAY<DOUBLE>, lidar_cluster_voxel: ARRAY<STRUCT<lidar_point_2d_x: DOUBLE, lidar_point_2d_y: DOUBLE>>, lidar_cluster_voxel_obj_mask: ARRAY<BIGINT>, lidar_cluster_center_x: DOUBLE, lidar_cluster_center_y: DOUBLE, lidar_cluster_center_z: DOUBLE, lidar_cluster_width: DOUBLE, lidar_cluster_height: DOUBLE, lidar_cluster_length: DOUBLE, is_background: BOOLEAN, is_hanging: BOOLEAN, is_continuous: BOOLEAN, lidar_cluster_semantic_score: ARRAY<DOUBLE>, lidar_cluster_mean_timestamp: STRING, lidar_cluster_mbr_yaw: DOUBLE, lidar_cluster_second_return_ration: DOUBLE, lidar_cluster_high_reflection_ration: DOUBLE, lidar_cluster_filterable_ratio: DOUBLE, lidar_cluster_occupied_ratio: DOUBLE, lidar_cluster_motion_uncertainty: DOUBLE, is_non_critical_object: BOOLEAN, lidar_cluster_check_code: BIGINT, highway_fp_tag: BIGINT, need_cross_check: BOOLEAN, goa_fp_tag: BIGINT>, lidar_object_detection_source: BIGINT, obs_lane_assignment: BIGINT, obs_laneid: ARRAY<BIGINT>, obs_heading: DOUBLE, obs_heading_std: DOUBLE, obs_vertical_distance: DOUBLE, obs_vertical_distance_std: DOUBLE, obs_dst_left_line: DOUBLE, obs_dst_right_line: DOUBLE, obs_ang_left_line: DOUBLE, obs_ang_right_line: DOUBLE, obs_existence_probability: DOUBLE, priority_level: BIGINT, obj_debug_info: ARRAY<DOUBLE>, obj_measuring_status: BIGINT, obj_lane_confidence: DOUBLE>>, dynamicobj: STRUCT<obj_info: STRUCT<obj_object_count: BIGINT, obj_vru_count: BIGINT, obj_vd_count: BIGINT, obj_cipv_id: BIGINT, obj_cipv_lost: BOOLEAN, obj_is_cci: BOOLEAN, obj_cci_side: BIGINT, obj_cci_id: BIGINT>, obj: ARRAY<STRUCT<obj_object_class: BIGINT, obj_age_frame: BIGINT, obj_object_id: BIGINT, obj_color: BIGINT, obj_existence_probability: DOUBLE, obj_is_very_close: BOOLEAN, obj_lane_assignment: BIGINT, obj_measuring_status: BIGINT, obj_motion_status: BIGINT, obj_motion_category: BIGINT, obj_is_blocked_parts: BIGINT, obj_heading: DOUBLE, obj_heading_std: DOUBLE, obj_angle_rate: DOUBLE, obj_angle_rate_std: DOUBLE, obj_brake_light: BIGINT, obj_turn_indicator: BIGINT, obj_hb_status: BIGINT, obj_dst_left_line: DOUBLE, obj_dst_right_line: DOUBLE, obj_is_blocked_left: BOOLEAN, obj_is_blocked_right: BOOLEAN, obj_distance: STRUCT<long_position: DOUBLE, long_position_std: DOUBLE, lat_position: DOUBLE, lat_position_std: DOUBLE, vertical_position: DOUBLE, vertical_position_std: DOUBLE>, obj_abs_velocity: STRUCT<long_velocity: DOUBLE, long_velocity_std: DOUBLE, lat_velocity: DOUBLE, lat_velocity_std: DOUBLE, up_velocity: DOUBLE, up_velocity_std: DOUBLE>, obj_abs_acc: STRUCT<long_acc: DOUBLE, long_acc_std: DOUBLE, lat_acc: DOUBLE, lat_acc_std: DOUBLE, up_acc: DOUBLE, up_acc_std: DOUBLE>, obj_dimension: STRUCT<obj_length: DOUBLE, obj_length_std: DOUBLE, obj_width: DOUBLE, obj_width_std: DOUBLE, obj_height: DOUBLE, obj_height_std: DOUBLE>, source: BIGINT, obj_relate_id: BIGINT, obj_object_door_left_status: BIGINT, obj_object_door_right_status: BIGINT, obj_cut_in_lat_distance: DOUBLE, obj_cut_in_lat_distance_std: DOUBLE, obj_cut_in_long_distance: DOUBLE, obj_cut_in_long_distance_std: DOUBLE, obj_cut_in_angle: DOUBLE, obj_cut_in_angle_std: DOUBLE, obj_age_second: DOUBLE, obj_missing_age_second: DOUBLE, lidar_cluster_object: STRUCT<lidar_cluster_class: BIGINT, lidar_cluster_probability: DOUBLE, lidar_cluster_velocity: STRUCT<lco_long_velocity: DOUBLE, lco_long_velocity_std: DOUBLE, lco_lat_velocity: DOUBLE, lco_lat_velocity_std: DOUBLE, lco_up_velocity: DOUBLE, lco_up_velocity_std: DOUBLE>, lidar_cluster_motion_state: BIGINT, lidar_cluster_points_num: BIGINT, lidar_cluster_points_height_max: DOUBLE, lidar_cluster_points_height_min: DOUBLE, lidar_cluster_points_height_ground: DOUBLE, lidar_cluster_polygon: ARRAY<STRUCT<lidar_point_2d_x: DOUBLE, lidar_point_2d_y: DOUBLE>>, lidar_cluster_polygon_min_height: ARRAY<DOUBLE>, lidar_cluster_polygon_max_height: ARRAY<DOUBLE>, lidar_cluster_voxel: ARRAY<STRUCT<lidar_point_2d_x: DOUBLE, lidar_point_2d_y: DOUBLE>>, lidar_cluster_voxel_obj_mask: ARRAY<BIGINT>, lidar_cluster_center_x: DOUBLE, lidar_cluster_center_y: DOUBLE, lidar_cluster_center_z: DOUBLE, lidar_cluster_width: DOUBLE, lidar_cluster_height: DOUBLE, lidar_cluster_length: DOUBLE, is_background: BOOLEAN, is_hanging: BOOLEAN, is_continuous: BOOLEAN, lidar_cluster_semantic_score: ARRAY<DOUBLE>, lidar_cluster_mean_timestamp: STRING, lidar_cluster_mbr_yaw: DOUBLE, lidar_cluster_second_return_ration: DOUBLE, lidar_cluster_high_reflection_ration: DOUBLE, lidar_cluster_filterable_ratio: DOUBLE, lidar_cluster_occupied_ratio: DOUBLE, lidar_cluster_motion_uncertainty: DOUBLE, is_non_critical_object: BOOLEAN, lidar_cluster_check_code: BIGINT, highway_fp_tag: BIGINT, need_cross_check: BOOLEAN, goa_fp_tag: BIGINT>, lidar_object_detection_source: BIGINT, lidar_trajectory_prediction: STRUCT<num_trajectories: BIGINT, trajectories: ARRAY<STRUCT<num_waypoints: BIGINT, waypoints: ARRAY<STRUCT<timestamp: STRING, x: DOUBLE, y: DOUBLE, yaw: DOUBLE, cov_x: DOUBLE, cov_y: DOUBLE, cov_xy: DOUBLE, reserve: ARRAY<DOUBLE>>>, probability: DOUBLE, reserve: ARRAY<DOUBLE>>>, best_prob_index: BIGINT, reserve: ARRAY<DOUBLE>>, obj_laneid: ARRAY<BIGINT>, obj_ang_left_line: DOUBLE, obj_ang_right_line: DOUBLE, obj_left_indicator: BIGINT, obj_right_indicator: BIGINT, obj_brake_light_probability: DOUBLE, obj_left_indicator_probability: DOUBLE, obj_right_indicator_probability: DOUBLE, has_articulated_trailers: BOOLEAN, vehicle_bodies: ARRAY<STRUCT<box_index: BIGINT, box_position: STRUCT<long_position: DOUBLE, long_position_std: DOUBLE, lat_position: DOUBLE, lat_position_std: DOUBLE, vertical_position: DOUBLE, vertical_position_std: DOUBLE>, box_dimension: STRUCT<obj_length: DOUBLE, obj_length_std: DOUBLE, obj_width: DOUBLE, obj_width_std: DOUBLE, obj_height: DOUBLE, obj_height_std: DOUBLE>, box_velocity: STRUCT<long_velocity: DOUBLE, long_velocity_std: DOUBLE, lat_velocity: DOUBLE, lat_velocity_std: DOUBLE, up_velocity: DOUBLE, up_velocity_std: DOUBLE>, box_acceleration: STRUCT<long_acc: DOUBLE, long_acc_std: DOUBLE, lat_acc: DOUBLE, lat_acc_std: DOUBLE, up_acc: DOUBLE, up_acc_std: DOUBLE>, box_heading: DOUBLE>>, obj_class_probability: DOUBLE, obj_motion_consistent_prob: DOUBLE, obj_lane_offset: ARRAY<DOUBLE>, obj_lane_relative_pos: ARRAY<BIGINT>, obj_lane_relative_pos_score: ARRAY<DOUBLE>, obj_cut_lane: ARRAY<BIGINT>, obj_cut_lane_score: ARRAY<DOUBLE>, obj_aeb_debug_info: ARRAY<DOUBLE>, priority_level: BIGINT, obj_object_specialclass: BIGINT, obj_motion_status_confidence: DOUBLE, obj_lane_confidence: DOUBLE, obj_cross_line: BIGINT, obj_cross_line_no: BIGINT, obj_risk_level: DOUBLE, short_term_trajectory_prediction: STRUCT<num_trajectories: BIGINT, trajectories: ARRAY<STRUCT<num_waypoints: BIGINT, waypoints: ARRAY<STRUCT<timestamp: STRING, x: DOUBLE, y: DOUBLE, yaw: DOUBLE, cov_x: DOUBLE, cov_y: DOUBLE, cov_xy: DOUBLE, reserve: ARRAY<DOUBLE>>>, probability: DOUBLE, reserve: ARRAY<DOUBLE>>>, best_prob_index: BIGINT, reserve: ARRAY<DOUBLE>>, long_term_trajectory_prediction: STRUCT<num_trajectories: BIGINT, trajectories: ARRAY<STRUCT<num_waypoints: BIGINT, waypoints: ARRAY<STRUCT<timestamp: STRING, x: DOUBLE, y: DOUBLE, yaw: DOUBLE, cov_x: DOUBLE, cov_y: DOUBLE, cov_xy: DOUBLE, reserve: ARRAY<DOUBLE>>>, probability: DOUBLE, reserve: ARRAY<DOUBLE>>>, best_prob_index: BIGINT, reserve: ARRAY<DOUBLE>>>>>, egocartraj: STRUCT<short_term_trajectory_prediction: STRUCT<num_trajectories: BIGINT, trajectories: ARRAY<STRUCT<num_waypoints: BIGINT, waypoints: ARRAY<STRUCT<timestamp: STRING, x: DOUBLE, y: DOUBLE, yaw: DOUBLE, cov_x: DOUBLE, cov_y: DOUBLE, cov_xy: DOUBLE, reserve: ARRAY<DOUBLE>>>, probability: DOUBLE, reserve: ARRAY<DOUBLE>>>, best_prob_index: BIGINT, reserve: ARRAY<DOUBLE>>, long_term_trajectory_prediction: STRUCT<num_trajectories: BIGINT, trajectories: ARRAY<STRUCT<num_waypoints: BIGINT, waypoints: ARRAY<STRUCT<timestamp: STRING, x: DOUBLE, y: DOUBLE, yaw: DOUBLE, cov_x: DOUBLE, cov_y: DOUBLE, cov_xy: DOUBLE, reserve: ARRAY<DOUBLE>>>, probability: DOUBLE, reserve: ARRAY<DOUBLE>>>, best_prob_index: BIGINT, reserve: ARRAY<DOUBLE>>, publish_ptp_ts: STRING, measuring_ts: STRING, intention: BIGINT, drive_model: BIGINT, reserve: ARRAY<DOUBLE>>, sensor_original_ts: STRUCT<sensor_camera_fw_ts: ARRAY<STRING>, sensor_camera_fn_ts: ARRAY<STRING>, sensor_camera_rn_ts: ARRAY<STRING>, sensor_camera_fl_ts: ARRAY<STRING>, sensor_camera_fr_ts: ARRAY<STRING>, sensor_camera_rr_ts: ARRAY<STRING>, sensor_camera_rl_ts: ARRAY<STRING>, sensor_camera_sfw_ts: ARRAY<STRING>, sensor_camera_srcw_ts: ARRAY<STRING>, sensor_camera_slw_ts: ARRAY<STRING>, sensor_camera_srw_ts: ARRAY<STRING>, sensor_lidar_ts: ARRAY<STRING>, sensor_radar_front_ts: ARRAY<STRING>, sensor_radar_fl_ts: ARRAY<STRING>, sensor_radar_fr_ts: ARRAY<STRING>, sensor_radar_rl_ts: ARRAY<STRING>, sensor_radar_rr_ts: ARRAY<STRING>, imu_ts: ARRAY<STRING>, gnss_ts: ARRAY<STRING>, vehicle_in_10ms_ts: ARRAY<STRING>, vehicle_in_50ms_ts: ARRAY<STRING>>, publish_ptp_ts: STRING, publisher_id: STRING, counter: STRING, publish_ts: STRING> COMMENT '', datetime STRING COMMENT '', rule_name STRING COMMENT '') USING parquet PARTITIONED BY (datetime, rule_name) LOCATION 'gfs:/ad-com-nio-insight-cn-prod/dwh/dwd/dwd_rams_cdm_perception_objects_1h_i' TBLPROPERTIES ( 'table_source' = 'modeling', 'transient_lastDdlTime' = '1690773109')
-        |""".stripMargin.replaceAll("\n"," ")
-    val testDDL="xxx PARTITIONED BY a LOCATION b TBLPROPERTIES c"
+  test("merge small files dynamic"){
+    //create a merge_small_files_test_table
+    val tableName="merge_small_files_test_table"
+    val ddl=MockData.mockPartitionTableDDL(tableName,true)
+    spark.sql(ddl)
+    //insert into
+    for(i <- 0 until 10){
+      mockDF.write.format("hive").mode("append").insertInto(tableName)
+    }
+    //now we have a small file table
+    val (_,location)=HiveUtils.getPartitionSpecAndLocation(tableName)
+    //check
+    val fileCount=HdfsUtils.getContentSummary(location).getFileCount
+    assert(fileCount==51)
+    //default reserve_days is 7 ,the table wouldn't be merged
+    val config:String="""
+        |{
+        | table_col:table_name
+        |}
+        |""".stripMargin
+    processor.config(ConfigFactory.parseString(config))
+    val inputDF=spark.sql(s"select '$tableName' as table_name")
+    processor.process(ListBuffer(inputDF))
+    val fileCountAfterMerge=HdfsUtils.getContentSummary(location).getFileCount
+   assert(fileCountAfterMerge==fileCount)
 
-    val partten=""".*PARTITIONED BY \((.*)\) LOCATION '(.*)' TBLPROPERTIES .*""".r
-    val partten(partitionSpec,location)=createDDL
-    println(partitionSpec)
-    println(location)
+    //use reserve_days 0 ,table will be merge
+    val config2:String="""
+                        |{
+                        | table_col:table_name
+                        | reserve_days:0
+                        |}
+                        |""".stripMargin
+    // need to set to dynamic ,otherwise it will  fall back to static
+    spark.conf.set(SQLConf.PARTITION_OVERWRITE_MODE.key, "dynamic")
+    processor.config(ConfigFactory.parseString(config2))
+    processor.process(ListBuffer(inputDF))
+    val fileCountAfterMerge2=HdfsUtils.getContentSummary(location).getFileCount
+    assert(fileCountAfterMerge2==6)
+    dropTable(tableName)
   }
 
-  test("test assert success") {
-    val df = spark.sql("select true")
-      val value=new AssertProcessor().process(ListBuffer(df))
-    assert(value.isEmpty)
+  test("merge small files dynamic fallback to static") {
+    //create a merge_small_files_test_table
+    val tableName="merge_small_files_test_table"
+    val ddl=MockData.mockPartitionTableDDL(tableName,true)
+    spark.sql(ddl)
+    //insert into
+    for(i <- 0 until 10){
+      mockDF.write.format("hive").mode("append").insertInto(tableName)
+    }
+    //now we have a small file table
+    val (_,location)=HiveUtils.getPartitionSpecAndLocation(tableName)
+    //check
+    val fileCount=HdfsUtils.getContentSummary(location).getFileCount
+    assert(fileCount==51)
+
+    val inputDF=spark.sql(s"select '$tableName' as table_name")
+
+    //use reserve_days 0 ,table will be merge
+    val config:String="""
+                         |{
+                         | table_col:table_name
+                         | reserve_days:0
+                         |}
+                         |""".stripMargin
+    // need to set to dynamic ,otherwise it will  fall back to static
+    spark.conf.set(SQLConf.PARTITION_OVERWRITE_MODE.key, "static")
+    processor.config(ConfigFactory.parseString(config))
+    processor.process(ListBuffer(inputDF))
+    val fileCountAfterMerge=HdfsUtils.getContentSummary(location).getFileCount
+    assert(fileCountAfterMerge==11)
+    dropTable(tableName)
+  }
+
+  test("merge small files static") {
+    //create a merge_small_files_test_table
+    val tableName="merge_small_files_test_table"
+    val ddl=MockData.mockPartitionTableDDL(tableName,true)
+    spark.sql(ddl)
+    //insert into
+    for(i <- 0 until 10){
+      mockDF.write.format("hive").mode("append").insertInto(tableName)
+    }
+    //now we have a small file table
+    val (_,location)=HiveUtils.getPartitionSpecAndLocation(tableName)
+    //check
+    val fileCount=HdfsUtils.getContentSummary(location).getFileCount
+    assert(fileCount==51)
+
+    val inputDF=spark.sql(s"select '$tableName' as table_name")
+
+    //use reserve_days 0 ,table will be merge
+    val config:String="""
+                        |{
+                        | table_col:table_name
+                        | reserve_days:0
+                        | dynamic_merge_mode:static
+                        |}
+                        |""".stripMargin
+    // need to set to dynamic ,otherwise it will  fall back to static
+    spark.conf.set(SQLConf.PARTITION_OVERWRITE_MODE.key, "dynamic")
+    processor.config(ConfigFactory.parseString(config))
+    processor.process(ListBuffer(inputDF))
+    val fileCountAfterMerge=HdfsUtils.getContentSummary(location).getFileCount
+    assert(fileCountAfterMerge==6)
+    dropTable(tableName)
   }
 
 }
