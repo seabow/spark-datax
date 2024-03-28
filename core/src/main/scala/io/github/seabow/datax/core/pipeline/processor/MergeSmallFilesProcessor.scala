@@ -1,12 +1,13 @@
 package io.github.seabow.datax.core.pipeline.processor
 
 import io.github.seabow.datax.common.ConfigUtils._
-import io.github.seabow.datax.common.{HdfsUtils, HiveUtils}
+import io.github.seabow.datax.common.HdfsUtils
 import io.github.seabow.datax.core.pipeline.Processor
-import org.apache.hadoop.fs.FileStatus
+import org.apache.hadoop.fs.{FileStatus, Path}
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.catalyst.encoders.RowEncoder
 import org.apache.spark.sql.types.{LongType, StringType, StructField, StructType}
+import org.apache.spark.sql.utils.SparkCatalogUtils
 import org.apache.spark.sql.{DataFrame, Row}
 
 import java.util.concurrent.Executors
@@ -76,9 +77,9 @@ class MergeSmallFilesProcessor extends Processor with Logging {
                             max_dirs_per_group:Int,
                             max_gb_per_group:Int,
                             concurrent_merge_group_size:Int,concurrent_static_merge_size:Int):Unit= {
-    val tableInfo=HiveUtils.getTableInfo(table)
+    val tableMetadata=SparkCatalogUtils.getTableMetadata(table)
     var dynamic_mode="dynamic"
-    if(tableInfo.partitionSpec.size>1){
+    if(tableMetadata.partitionColumnNames.size>1){
       val partitionCount=spark.sql(s"show partitions $table").count()
       if(partitionCount>30000){
         dynamic_mode="partial_dynamic"
@@ -88,7 +89,7 @@ class MergeSmallFilesProcessor extends Processor with Logging {
     val staticExecutor: ExecutionContextExecutor = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(concurrent_static_merge_size))
     // 遍历一级分区，对待合并分区进行分组，输出partitionGroups
     //顺序:old first; 分区数量:100, 限制:排除modifytime xx天以内的分区，大小:最大单次合并100G。
-    val partitionDirs=HdfsUtils.listDirs(tableInfo.location).filter(_.getPath.toString.contains("=")
+    val partitionDirs=HdfsUtils.listDirs(new Path(tableMetadata.location).toString).filter(_.getPath.toString.contains("=")
     ).filter(System.currentTimeMillis()-_.getModificationTime>reserve_days*24*60*60*1000l).toSeq
     val partitionStats=getPartitionStats(partitionDirs).sortBy(_.getAs[Long]("modify_time"))
     def needToMerge(partition:Row):Boolean = {
@@ -137,11 +138,11 @@ class MergeSmallFilesProcessor extends Processor with Logging {
             val partitionValuePattern(partitionValue)=path
             s"'$partitionValue'"
           }.mkString(",")
-          val topPartitionCol=tableInfo.partitionSpec.split(",").head
+          val topPartitionCol=tableMetadata.partitionColumnNames.head
           val mergeSql=  s"""insert overwrite $table
                             |select * from $table
                             |where $topPartitionCol in ($topPartitions)
-                            |distribute by ${tableInfo.partitionSpec}""".stripMargin
+                            |distribute by ${tableMetadata.partitionColumnNames.mkString(",")}""".stripMargin
           val mergeTask=Future{
             val currentIndex = partitionGroupIndex.getAndIncrement()
             spark.sparkContext.setJobGroup(s"dynamic merge $table partition group $currentIndex/${partitionGroups.size}",s"merge partition group $currentIndex/${partitionGroups.size} $topPartitionCol in ($topPartitions)")
@@ -168,9 +169,9 @@ class MergeSmallFilesProcessor extends Processor with Logging {
         partition=>
           val path=partition.getAs[String]("path")
          val staticPart= path.split("/").filter(_.contains("=")).map(_.split("=")).map(array=> s"${array.head}='${array.last}'").head
-         val dynamicPart= tableInfo.partitionSpec.split(",").tail.mkString(",")
+         val dynamicPart= tableMetadata.partitionColumnNames.tail.mkString(",")
          val mergeSql=s"""insert overwrite $table partition($staticPart,$dynamicPart)
-              | select * from ${tableInfo.provider}.`$path`
+              | select * from ${tableMetadata.provider.get}.`$path`
               | distribute by $dynamicPart
               |""".stripMargin
           mergeTasks.append(Future{
@@ -193,8 +194,9 @@ class MergeSmallFilesProcessor extends Processor with Logging {
                                     mode:String,
                                     executor:ExecutionContextExecutor):Unit={
     spark.sparkContext.setJobGroup(s"static merge $table partitions",s"merge ${partitions.size} partitions:${partitions.mkString(",")}")
-    val tableInfo=HiveUtils.getTableInfo(table)
-    val partitionDirs=partitions.map(p=>tableInfo.location.stripSuffix("/")+"/"+p).filter(HdfsUtils.exist).map(HdfsUtils.getStatus
+    val tableMetadata=SparkCatalogUtils.getTableMetadata(table)
+    val tableDirString=new Path(tableMetadata.location).toString.stripSuffix("/")+"/"
+    val partitionDirs=partitions.map(p=>tableDirString+p).filter(HdfsUtils.exist).map(HdfsUtils.getStatus
     ).filter(System.currentTimeMillis()-_.getModificationTime>reserve_days*24*60*60*1000l).toSeq
     val partitionStats=getPartitionStats(partitionDirs).sortBy(_.getAs[Long]("modify_time"))
     val mergeTasks=ListBuffer.empty[Future[Any]]
@@ -218,7 +220,7 @@ class MergeSmallFilesProcessor extends Processor with Logging {
           val targetFileCount=fileLength/(target_file_size_mb*1024*1024) + 1
           val mergeTask=Future {
             spark.sparkContext.setJobGroup(s"static merge $table partitions",s"merge (${partitionIndex.getAndIncrement()}/${partitionStatsNeedToMerge.size}) $partitionPath: $fileCount=>$targetFileCount,mode:$mode")
-            mergeLeafPartition(table, partitionPath, targetFileCount.toInt,mode,tableInfo.provider)
+            mergeLeafPartition(table, partitionPath, targetFileCount.toInt,mode,tableMetadata.provider.get)
           }(executor)
           mergeTasks.append(mergeTask)
     }

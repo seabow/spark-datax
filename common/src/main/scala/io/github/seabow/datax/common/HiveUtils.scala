@@ -1,6 +1,6 @@
 package io.github.seabow.datax.common
 
-import org.apache.spark.sql.{Row, SparkSession}
+import org.apache.spark.sql.SparkSession
 
 import scala.collection.mutable.ListBuffer
 
@@ -35,29 +35,4 @@ object HiveUtils {
     provider
   }
 
-  def getTableInfo(table:String):TableInfo={
-    val spark=SparkSession.getActiveSession.get
-    val describeDF=spark.sql(s"describe EXTENDED $table")
-    val describeInfo=describeDF.collect()
-    def getValue(describeInfo:Array[Row],key:String):String={
-      describeInfo.filter(_.getAs[String]("col_name").equalsIgnoreCase(key)).head.getAs[String]("data_type")
-    }
-    val location=getValue(describeInfo,"Location")
-    val provider=getValue(describeInfo,"Provider")
-    var startCollectPartitionColsFlag=false
-    val partitionSpec=ListBuffer.empty[String]
-    describeInfo.foreach{
-      r=>
-        if(r.getAs[String]("col_name").equals("# Detailed Table Information")){
-          startCollectPartitionColsFlag=false
-        }
-        if(startCollectPartitionColsFlag){
-          partitionSpec.append(r.getAs[String]("col_name"))
-        }
-        if(r.getAs[String]("col_name").equals("# col_name")){
-          startCollectPartitionColsFlag=true
-        }
-    }
-    TableInfo(partitionSpec.filter(_.nonEmpty).mkString(","),location,provider)
-  }
 }

@@ -1,7 +1,7 @@
 package io.github.seabow.datax.core.mock
 
-import org.apache.spark.sql.{Row, SparkSession}
 import org.apache.spark.sql.types._
+import org.apache.spark.sql.{Row, SparkSession}
 
 import java.sql.{Date, Timestamp}
 import scala.collection.JavaConverters._
@@ -56,14 +56,15 @@ object MockData {
     s"create table if not exists $tableName (${userDefinedSchema_01.toDDL}) using orc"
   }
 
-  def mockPartitionTableDDL(tableName:String,useLowerCase:Boolean=false):String={
+  def mockPartitionTableDDL(tableName:String,useLowerCase:Boolean=false,useHiveFormat:Boolean=false):String={
     var ddl=userDefinedSchema_01.fields.dropRight(2).map(_.toDDL).mkString(",")
     var partitionSpec="(ImpDay string,ImpHour string)"
     if(useLowerCase){
       ddl=ddl.toLowerCase
       partitionSpec=partitionSpec.toLowerCase
     }
-    s"create table if not exists $tableName ($ddl) using orc partitioned by $partitionSpec"
+    val sparkOrHiveFormat= if(useHiveFormat) "stored as" else "using"
+    s"create table if not exists $tableName ($ddl) $sparkOrHiveFormat orc partitioned by $partitionSpec"
   }
 
   def mockIcebergPartitionTableDDL(tableName:String):String={

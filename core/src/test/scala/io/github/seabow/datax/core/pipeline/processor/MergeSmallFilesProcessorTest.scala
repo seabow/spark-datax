@@ -120,4 +120,38 @@ class MergeSmallFilesProcessorTest  extends BasePipelineTest{
     dropTable(tableName)
   }
 
+  test("merge small files static using hive format") {
+    //create a merge_small_files_test_table
+    val tableName="merge_small_files_test_table"
+    //if use hive format ,then provider will be hive.
+    val ddl=MockData.mockPartitionTableDDL(tableName,true,true)
+    spark.sql(ddl)
+    //insert into
+    for(i <- 0 until 10){
+      mockDF.write.format("hive").mode("append").insertInto(tableName)
+    }
+    //now we have a small file table
+    val (_,location)=HiveUtils.getPartitionSpecAndLocation(tableName)
+    //check
+    val fileCount=HdfsUtils.getContentSummary(location).getFileCount
+    assert(fileCount==51)
+
+    val inputDF=spark.sql(s"select '$tableName' as table_name")
+
+    //use reserve_days 0 ,table will be merge
+    val config:String="""
+                        |{
+                        | table_col:table_name
+                        | reserve_days:0
+                        | dynamic_merge_mode:static
+                        |}
+                        |""".stripMargin
+    processor.config(ConfigFactory.parseString(config))
+    processor.process(ListBuffer(inputDF))
+    val fileCountAfterMerge=HdfsUtils.getContentSummary(location).getFileCount
+    assert(fileCountAfterMerge==6)
+    dropTable(tableName)
+  }
+
+
 }
