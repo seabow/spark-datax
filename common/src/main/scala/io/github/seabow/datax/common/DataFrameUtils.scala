@@ -5,10 +5,7 @@ import org.apache.spark.sql.{DataFrame, Dataset, Encoder, Row}
 import java.util.concurrent.ArrayBlockingQueue
 import java.util.concurrent.atomic.AtomicInteger
 import scala.collection.AbstractIterator
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.duration.Duration
-import scala.concurrent.{Await, Future}
-import scala.util.Success
+import scala.concurrent.Future
 
 object DataFrameUtils {
   implicit class DataFrameImplicits (val df: DataFrame) {
@@ -18,17 +15,7 @@ object DataFrameUtils {
       df.repartition(partitionNum)
     }
 
-//    def flatMapWithThreadsOld[U : Encoder](nThreads: Int)(block: Row => TraversableOnce[U]): Dataset[U] = {
-//      df.mapPartitions {
-//        rows =>
-//          val ec = FutureUtils.buildExecutorContext(nThreads)
-//          rows.map {
-//            row =>
-//            Await.result( Future(block(row))(ec),Duration.Inf)
-//          }.flatten
-//      }
-//    }
-    //我们需要一个性能更加好的实现，通过阻塞队列
+    //通过阻塞队列进行flatmap以提供更高的cpu利用率。
     def flatMapWithThreads[U : Encoder](nThreads: Int)(block: Row => TraversableOnce[U]): Dataset[U] = {
       df.mapPartitions {
         rows =>
