@@ -30,7 +30,7 @@ import java.sql.Timestamp
 import java.time.Duration
 import scala.collection.JavaConverters._
 
-class ProtobufFunctionsSuite extends QueryTest with SharedSparkSession with ProtobufTestBase
+class ProtobufFunctionsTest extends QueryTest with SharedSparkSession with ProtobufTestBase
   with Serializable {
 
   import testImplicits._
