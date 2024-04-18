@@ -6,6 +6,7 @@ import java.util.concurrent.ArrayBlockingQueue
 import java.util.concurrent.atomic.AtomicInteger
 import scala.collection.AbstractIterator
 import scala.concurrent.Future
+import scala.util.control.Breaks.{break, breakable}
 
 object DataFrameUtils {
   implicit class DataFrameImplicits (val df: DataFrame) {
@@ -35,7 +36,12 @@ object DataFrameUtils {
               }(ec)
           }
           val results= new AbstractIterator[U] {
-            def hasNext: Boolean = executedCnt.get()<rowSize || queue.size()>0
+            def hasNext: Boolean = {
+              while (executedCnt.get() < rowSize) {
+                if (!queue.isEmpty) {return true}
+              }
+              !queue.isEmpty
+            }
             def next(): U = queue.take()
           }
           results
