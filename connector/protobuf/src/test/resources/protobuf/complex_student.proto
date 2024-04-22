@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package org.apache.spark.sql.protobuf.protos;
+
+option java_outer_classname = "ComplexStudentProto";
+
+message ComplexStudent {
+  int64 id = 1;
+  string name = 2;
+  int32 age = 3;
+  //neea some more type
+  repeated string favorite_foods=4;
+
+}

@@ -79,7 +79,7 @@ private[sql] class ProtobufDeserializer(
   // JsonFormatter used to convert Any fields (if the option is enabled).
   // This keeps original field names and does not include any extra whitespace in JSON.
   // If the runtime type for Any field is not found in the registry, it throws an exception.
-  private val jsonPrinter = if (enumsAsInts) {
+  val jsonPrinter = if (enumsAsInts) {
     JsonFormat.printer
       .omittingInsignificantWhitespace()
       .preservingProtoFieldNames()

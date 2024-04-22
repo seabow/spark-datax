@@ -17,6 +17,7 @@
 package org.apache.spark.sql.protobuf.utils
 
 import org.apache.hadoop.conf.Configuration
+import org.apache.spark.SparkConf
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.catalyst.FileSourceOptions
@@ -26,9 +27,9 @@ import org.apache.spark.sql.catalyst.util.{CaseInsensitiveMap, FailFastMode, Par
  * Options for Protobuf Reader and Writer stored in case insensitive manner.
  */
 private[sql] class ProtobufOptions(
-    @transient val parameters: CaseInsensitiveMap[String],
-    @transient val conf: Configuration)
-    extends FileSourceOptions(parameters)
+                                    @transient val parameters: CaseInsensitiveMap[String],
+                                    @transient val conf: Configuration)
+  extends FileSourceOptions(parameters)
     with Logging {
 
   def this(parameters: Map[String, String], conf: Configuration) = {
@@ -46,7 +47,7 @@ private[sql] class ProtobufOptions(
   // and corresponding fields are ignored (dropped).
   val recursiveFieldMaxDepth: Int = parameters.getOrElse("recursive.fields.max.depth", "-1").toInt
 
-  val castEnumAsInt: Boolean = parameters.getOrElse("castEnumAsInt","true").toBoolean
+  val castEnumAsInt: Boolean = parameters.getOrElse("castEnumAsInt", "true").toBoolean
   // Whether to render fields with zero values when deserializing Protobuf to a Spark struct.
   // When a field is empty in the serialized Protobuf, this library will deserialize them as
   // null by default. However, this flag can control whether to render the type-specific zero value.
@@ -99,22 +100,22 @@ private[sql] class ProtobufOptions(
    * This this lot more readable than the binary data. This configuration option enables
    * converting Any fields to JSON. The example blow clarifies further.
    *
-   *  Consider two Protobuf types defined as follows:
-   *    message ProtoWithAny {
-   *       string event_name = 1;
-   *       google.protobuf.Any details = 2;
-   *    }
+   * Consider two Protobuf types defined as follows:
+   * message ProtoWithAny {
+   * string event_name = 1;
+   * google.protobuf.Any details = 2;
+   * }
    *
-   *    message Person {
-   *      string name = 1;
-   *      int32 id = 2;
-   *   }
+   * message Person {
+   * string name = 1;
+   * int32 id = 2;
+   * }
    *
    * With this option enabled, schema for `from_protobuf("col", messageName = "ProtoWithAny")`
    * would be : `STRUCT<event_name: STRING, details: STRING>`.
    * At run time, if `details` field contains `Person` Protobuf message, the returned value looks
    * like this:
-   *   ('click', '{"@type":"type.googleapis.com/...ProtoWithAny","name":"Mario","id":100}')
+   * ('click', '{"@type":"type.googleapis.com/...ProtoWithAny","name":"Mario","id":100}')
    *
    * Requirements:
    *  - The definitions for all the possible Protobuf types that are used in Any fields should be
@@ -129,14 +130,34 @@ private[sql] class ProtobufOptions(
    * In addition schema safety is also reduced making downstream processing error prone.
    */
   val convertAnyFieldsToJson: Boolean =
-    parameters.getOrElse("convertAnyFieldsToJson", "false").toBoolean
+    parameters.getOrElse("convertAnyFieldsToJson", "true").toBoolean
 }
 
 private[sql] object ProtobufOptions {
+  val sparkConfPrefix = "spark.sql.protobuf."
+
   def apply(parameters: Map[String, String]): ProtobufOptions = {
     val hadoopConf = SparkSession.getActiveSession
       .map(_.sessionState.newHadoopConf())
       .getOrElse(new Configuration())
+    new ProtobufOptions(CaseInsensitiveMap(parameters), hadoopConf)
+  }
+
+  def apply(): ProtobufOptions = {
+    // use spark conf
+    val sparkConf = SparkSession.getActiveSession.map(_.sparkContext.getConf).getOrElse(
+      new SparkConf()
+    )
+    val hadoopConf = SparkSession.getActiveSession
+      .map(_.sessionState.newHadoopConf())
+      .getOrElse(new Configuration())
+    val protobufParamConfKeys = Seq(
+      "mode", "recursive.fields.max.depth", "castEnumAsInt", "emitDefaultValues", "convertAnyFieldsToJson"
+    )
+    val parameters = protobufParamConfKeys.map(sparkConfPrefix + _).filter(sparkConf.contains).map {
+      key =>
+        (key, sparkConf.get(key))
+    }.toMap
     new ProtobufOptions(CaseInsensitiveMap(parameters), hadoopConf)
   }
 }
