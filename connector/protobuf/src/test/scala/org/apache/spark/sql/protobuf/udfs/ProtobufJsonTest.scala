@@ -51,4 +51,19 @@ class ProtobufJsonTest extends ProtobufSharedSparkSession with ProtobufTestBase{
     spark.sql("""select get_json_object('{"a":{"b":"c"},"ar":[{"c":"d"},{"e":"f"}]}','$.ar')""").show()
   }
 
+  test("print json object extensions"){
+    // build a byte
+    val studentDF=spark.createDataFrame(complexStudentData,complexStudentSchema)
+    //to_proto
+    val protoDF=studentDF.withColumn("value",struct("id","name","age","favorite_foods")
+    ).withColumn("proto",to_protobuf(col("value"),"ComplexStudent",complexStudentDesc)
+    ).withColumn("proto_struct",struct(col("proto"),lit("ComplexStudent"),lit(complexStudentDescFile))
+    ).withColumn("descriptor_path",lit(complexStudentDescFile)).withColumn("msg_name",lit("ComplexStudent")).drop("value")
+    protoDF.show(false)
+    protoDF.repartition(1).createOrReplaceTempView("test_table")
+    spark.sql("select get_json_object(proto_struct,'$.favorite_foods[0]'),get_json_object(proto_struct,'$.age') from test_table").show(false)
+
+    //
+  }
+
 }
