@@ -19,8 +19,10 @@ import scala.collection.concurrent.TrieMap
 
 object GetProtobufJsonObject {
   //(msgName,descFilePath)
+  @transient private lazy val descriptorBytesMap =
+  TrieMap.empty[ String, Option[Array[Byte]]]
   @transient private lazy val messageDescriptorMap =
-  TrieMap.empty[(String, String), Descriptor]
+  TrieMap.empty[(String, String), Option[Descriptor]]
   @transient private lazy val messageCahceMap =
     TrieMap.empty[InternalRow, DynamicMessage]
   private lazy val protobufOptions = ProtobufOptions()
@@ -80,17 +82,34 @@ case class GetProtobufJsonObject(protobuf_bytes: Expression, path: Expression, m
     val messageDescriptorMapKey = (msgName, protoDescFile)
     if (!messageDescriptorMap.contains(messageDescriptorMapKey)) {
       val binaryFileDescriptorSet: Option[Array[Byte]] = if (protoDescFile.nonEmpty) {
-        Some(ProtobufUtils.readDescriptorFileContent(protoDescFile))
+        if(descriptorBytesMap.contains(protoDescFile)){
+          descriptorBytesMap(protoDescFile)
+        }else{
+          val bytesOption=try{
+            Some(ProtobufUtils.readDescriptorFileContent(protoDescFile))
+          }catch {
+            case e: Throwable=>
+              None
+          }
+          descriptorBytesMap.put(protoDescFile, bytesOption)
+          bytesOption
+        }
       } else {
         None
       }
-      val messageDescriptor = ProtobufUtils.buildDescriptor(msgName, binaryFileDescriptorSet)
+      val messageDescriptor =  try{
+        Some( ProtobufUtils.buildDescriptor(msgName, binaryFileDescriptorSet))
+      }catch {
+        case e:Throwable=>
+          e.printStackTrace()
+          None
+      }
       messageDescriptorMap.put(messageDescriptorMapKey,
         messageDescriptor)
     }
   }
 
-  private def getMessageDescriptor(msgName: String, descFilePath: String): Descriptor = {
+  private def getMessageDescriptor(msgName: String, descFilePath: String): Option[Descriptor] = {
     val messageDescriptorMapKey = if (msgName.contains(".")) {
       (msgName, "")
     } else {
@@ -165,10 +184,13 @@ case class GetProtobufJsonObject(protobuf_bytes: Expression, path: Expression, m
     val msgNameStr = msgName.eval(input).asInstanceOf[UTF8String].toString
     val descFilePathStr = descFilePath.eval(input).asInstanceOf[UTF8String].toString
     val descriptor = getMessageDescriptor(msgNameStr, descFilePathStr)
+    if(descriptor.isEmpty){
+      return null
+    }
     var dynamicMessage = if (messageCahceMap.contains(input)) {
       messageCahceMap(input)
     } else {
-      val result = DynamicMessage.parseFrom(descriptor, protoBinary)
+      val result = DynamicMessage.parseFrom(descriptor.get, protoBinary)
       messageCahceMap.clear()
       messageCahceMap.put(input, result)
       result

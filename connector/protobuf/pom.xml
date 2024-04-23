@@ -23,7 +23,6 @@
             <groupId>io.github.seabow</groupId>
             <artifactId>spark-datax-core</artifactId>
             <version>${project.version}</version>
-            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.apache.spark</groupId>

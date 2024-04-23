@@ -1,11 +1,11 @@
 package org.apache.spark.sql.protobuf.udfs
 
 import com.google.protobuf.DynamicMessage
-import org.apache.spark.sql.functions.{col, lit, struct}
+import org.apache.spark.sql.functions.{col, expr, lit, struct}
 import org.apache.spark.sql.protobuf.functions.to_protobuf
 import org.apache.spark.sql.protobuf.utils.ProtobufUtils
 import org.apache.spark.sql.protobuf.{ProtobufSharedSparkSession, ProtobufTestBase}
-import  org.apache.spark.sql.protobuf.MockData._
+import org.apache.spark.sql.protobuf.MockData._
 
 class ProtobufJsonTest extends ProtobufSharedSparkSession with ProtobufTestBase{
   val student1DescFile = protobufDescriptorFile("student1.desc")
@@ -61,9 +61,6 @@ class ProtobufJsonTest extends ProtobufSharedSparkSession with ProtobufTestBase{
     ).withColumn("descriptor_path",lit(complexStudentDescFile)).withColumn("msg_name",lit("ComplexStudent")).drop("value")
     protoDF.show(false)
     protoDF.repartition(1).createOrReplaceTempView("test_table")
-    spark.sql("select get_json_object(proto_struct,'$.favorite_foods[0]'),get_json_object(proto_struct,'$.age') from test_table").show(false)
-
-    //
+    spark.sql("select get_json_object(struct(proto,'ComplexStudent','target/generated-test-sources/complex_student.desc'),'$.favorite_foods[0]'),get_json_object(proto_struct,'$.age') from test_table").show(false)
   }
-
 }
