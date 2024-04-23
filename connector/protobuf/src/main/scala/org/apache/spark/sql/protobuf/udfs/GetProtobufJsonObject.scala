@@ -107,7 +107,8 @@ case class GetProtobufJsonObject(protobuf_bytes: Expression, path: Expression, m
     try {
       evalInternal(input)
     } catch {
-      case e: Throwable => null
+      case e: Throwable =>
+        throw e
     }
   }
 
@@ -177,7 +178,7 @@ case class GetProtobufJsonObject(protobuf_bytes: Expression, path: Expression, m
     val printToIndex = if (pathSeq.filter(_.contains("[")).size > 0) {
       pathSeq.zipWithIndex.filter(_._1.contains("[")).map(_._2).min
     } else {
-      pathSeq.size - 1
+      Math.max(1,pathSeq.size - 1)
     }
     var index = 1
     while (index < printToIndex) {
@@ -190,12 +191,15 @@ case class GetProtobufJsonObject(protobuf_bytes: Expression, path: Expression, m
       } catch {
         case e: Throwable =>
           log.warn(s"can not cast field ${pathSeq.slice(0, index + 1).mkString(".")} as a message")
-          return null
+
       }
       index += 1
     }
     val leafPathSeq = pathSeq.slice(printToIndex, pathSeq.size)
-    if (leafPathSeq.length == 1 && !leafPathSeq.head.contains("[")) {
+    if(leafPathSeq.isEmpty){
+      UTF8String.fromString(currentJsonPrinter.print(dynamicMessage))
+    }
+    else if (leafPathSeq.length == 1 && !leafPathSeq.head.contains("[")) {
       val fieldOption = getField(leafPathSeq.head, dynamicMessage)
       if (fieldOption.isEmpty) {
         return null
