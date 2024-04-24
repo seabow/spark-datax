@@ -157,7 +157,7 @@ case class GetProtobufJsonObject(protobuf_bytes: Expression, path: Expression, m
       return None
     }
     val field = fieldOption.get
-    if (message.getAllFields.containsKey(field)) {
+    if (message.hasField(field)) {
       return Some((field, message.getField(field)))
     }
     if (protobufOptions.emitDefaultValues) {

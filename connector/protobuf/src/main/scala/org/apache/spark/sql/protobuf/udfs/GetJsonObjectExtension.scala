@@ -41,6 +41,8 @@ case class GetJsonObjectExtension(protobuf_or_json: Expression, path: Expression
 
   override def prettyName: String = "get_json_object"
 
+  val get_json_object_expr= GetJsonObject(protobuf_or_json,path)
+
   override def eval(input: InternalRow): Any = {
     try {
       protobuf_or_json.dataType match {
@@ -51,7 +53,7 @@ case class GetJsonObjectExtension(protobuf_or_json: Expression, path: Expression
           val descriptor_path=struct.get(2,StringType).asInstanceOf[UTF8String].toString
           GetProtobufJsonObject(Literal(pb),path, Literal(msgType), Literal(descriptor_path)).eval(input)
         case StringType=>
-          GetJsonObject(protobuf_or_json,path).eval(input)
+          get_json_object_expr.eval(input)
         case _=> null
       }
     } catch {
