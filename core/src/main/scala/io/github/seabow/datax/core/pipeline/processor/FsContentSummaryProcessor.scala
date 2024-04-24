@@ -30,19 +30,21 @@ class FsContentSummaryProcessor extends Processor with Logging {
         val opResultFutures = partition.map {
           row =>
             val path = row.getAs[String](path_col)
-            Future {
-              try {
-                val contentSummary = HdfsUtils.getContentSummary(path)
-                Some(Row.fromSeq(row.toSeq ++ Seq[Any](contentSummary.getLength
-                  , contentSummary.getDirectoryCount, contentSummary.getFileCount, contentSummary.getSpaceConsumed)))
-              } catch {
-                case _:Throwable => None
-              }
+            println(s"getting content summary for: $path ")
+            try{
+            FutureUtils.runWithTimeout(7200){
+              val contentSummary = HdfsUtils.getContentSummaryWithThreads(20)(path)
+              println(s"got content summary for: $path ,$contentSummary ")
+              Row.fromSeq(row.toSeq ++ Seq[Any](contentSummary.getLength
+                  , contentSummary.getDirectoryCount, contentSummary.getFileCount, contentSummary.getSpaceConsumed))
             }(executorContext)
+              }catch {
+              case e: Exception =>
+                e.printStackTrace
+                None
+            }
         }
-        Await.result(Future.sequence(opResultFutures), Duration.Inf).filter(
-          _.isDefined
-        ).map(_.get)
+        opResultFutures.toSeq.filter(_.isDefined).map(_.get).toIterator
     }(RowEncoder(newSchema))
   }
 

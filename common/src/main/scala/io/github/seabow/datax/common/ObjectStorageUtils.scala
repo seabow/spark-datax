@@ -1,6 +1,6 @@
 package io.github.seabow.datax.common
 
-import org.apache.hadoop.fs.FileStatus
+import org.apache.hadoop.fs.{ContentSummary, FileStatus, Path}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{Await, ExecutionContext, Future}

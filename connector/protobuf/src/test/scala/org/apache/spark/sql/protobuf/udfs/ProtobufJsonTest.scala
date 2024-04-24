@@ -6,6 +6,7 @@ import org.apache.spark.sql.protobuf.functions.to_protobuf
 import org.apache.spark.sql.protobuf.utils.ProtobufUtils
 import org.apache.spark.sql.protobuf.{ProtobufSharedSparkSession, ProtobufTestBase}
 import org.apache.spark.sql.protobuf.MockData._
+import scala.collection.JavaConverters._
 
 class ProtobufJsonTest extends ProtobufSharedSparkSession with ProtobufTestBase{
   val student1DescFile = protobufDescriptorFile("student1.desc")
@@ -53,7 +54,8 @@ class ProtobufJsonTest extends ProtobufSharedSparkSession with ProtobufTestBase{
 
   test("print json object extensions"){
     // build a byte
-    val studentDF=spark.createDataFrame(complexStudentData,complexStudentSchema)
+    val complexStudentData2=(1 to 200000).map(a=>complexStudentData.asScala).flatten.asJava
+    val studentDF=spark.createDataFrame(complexStudentData2,complexStudentSchema)
     //to_proto
     val protoDF=studentDF.withColumn("value",struct("id","name","age","favorite_foods")
     ).withColumn("proto",to_protobuf(col("value"),"ComplexStudent",complexStudentDesc)
@@ -61,6 +63,7 @@ class ProtobufJsonTest extends ProtobufSharedSparkSession with ProtobufTestBase{
     ).withColumn("descriptor_path",lit(complexStudentDescFile)).withColumn("msg_name",lit("ComplexStudent")).drop("value")
     protoDF.show(false)
     protoDF.repartition(1).createOrReplaceTempView("test_table")
-    spark.sql("select get_json_object(struct(proto,'ComplexStudent','target/generated-test-sources/complex_student.desc'),'$.favorite_foods[0]'),get_json_object(proto_struct,'$.age') from test_table").show(false)
+    spark.sql("select get_json_object(struct(proto,'ComplexStudent','target/generated-test-sources/complex_student.desc'),'$.favorite_foods[0]'),get_json_object(proto_struct,'$.age') from test_table"
+    ).foreach(row=>{})
   }
 }
