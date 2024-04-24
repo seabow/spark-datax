@@ -1,7 +1,10 @@
 package org.apache.spark.sql.protobuf.udfs
 
+import com.fasterxml.jackson.core.JsonParser
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.google.gson.Gson
 import com.google.protobuf.Descriptors.{Descriptor, FieldDescriptor}
-import com.google.protobuf.DynamicMessage
+import com.google.protobuf.{DynamicMessage, ProtobufStatsUtils}
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions.codegen.CodegenFallback
@@ -9,7 +12,7 @@ import org.apache.spark.sql.catalyst.expressions.{ExpectsInputTypes, Expression,
 import org.apache.spark.sql.errors.Implicits.QueryComiplationErrorsImplicit
 import org.apache.spark.sql.errors.QueryCompilationErrors
 import org.apache.spark.sql.internal.SQLConf
-import org.apache.spark.sql.protobuf.utils.{ProtobufJsonFormat, ProtobufOptions, ProtobufUtils}
+import org.apache.spark.sql.protobuf.utils.ProtobufUtils
 import org.apache.spark.sql.types.{AbstractDataType, BinaryType, DataType, StringType}
 import org.apache.spark.unsafe.types.UTF8String
 
@@ -17,33 +20,18 @@ import java.util.Locale
 import scala.collection.JavaConverters._
 import scala.collection.concurrent.TrieMap
 
-object GetProtobufJsonObject {
+object StatsProtobuf {
   //(msgName,descFilePath)
   @transient private lazy val descriptorBytesMap =
   TrieMap.empty[ String, Option[Array[Byte]]]
   @transient private lazy val messageDescriptorMap =
-  TrieMap.empty[(String, String), Option[Descriptor]]
+    TrieMap.empty[(String, String), Option[Descriptor]]
+
   @transient private lazy val messageCahceMap =
     TrieMap.empty[InternalRow, DynamicMessage]
-  private lazy val protobufOptions = ProtobufOptions()
-  //we don't parse any type for protobuf
-  private lazy val jsonPrinter = {
-    var jsonPrinter =
-      ProtobufJsonFormat.printer
-        .omittingInsignificantWhitespace()
-        .preservingProtoFieldNames()
-    if (protobufOptions.castEnumAsInt) {
-      jsonPrinter = jsonPrinter.printingEnumsAsInts()
-    }
-    if (protobufOptions.emitDefaultValues) {
-      jsonPrinter = jsonPrinter.includingDefaultValueFields()
-    }
-    jsonPrinter
-  }
 }
-
 @ExpressionDescription(
-  usage = "_FUNC_(protobuf_bytes, path,msgName,descFilePath) - Extracts a json object from protobuf `path`.",
+  usage = "_FUNC_(protobuf_bytes, path,msgName,descFilePath) - stats protobuf size in bytes.",
   examples =
     """
     Examples:
@@ -51,7 +39,7 @@ object GetProtobufJsonObject {
        b
   """,
   group = "json_funcs")
-case class GetProtobufJsonObject(protobuf_bytes: Expression, path: Expression, msgName: Expression, descFilePath: Expression)
+case class StatsProtobuf(protobuf_bytes: Expression, path: Expression, msgName: Expression, descFilePath: Expression)
   extends QuaternaryExpression with ExpectsInputTypes with CodegenFallback with Logging {
   override def inputTypes: Seq[AbstractDataType] = Seq(BinaryType, StringType, StringType, StringType)
 
@@ -71,12 +59,11 @@ case class GetProtobufJsonObject(protobuf_bytes: Expression, path: Expression, m
 
   override def nullable: Boolean = true
 
-  override def prettyName: String = "get_protobuf_json_object"
+  override def prettyName: String = "stats_protobuf"
 
-  //we don't parse any type for protobuf
-  private lazy val currentJsonPrinter = GetProtobufJsonObject.jsonPrinter
+  @transient lazy val gson=new Gson()
 
-  import GetProtobufJsonObject._
+  import StatsProtobuf._
 
   private def loadNewProtoVersion(msgName: String, protoDescFile: String): Unit = {
     val messageDescriptorMapKey = (msgName, protoDescFile)
@@ -164,7 +151,7 @@ case class GetProtobufJsonObject(protobuf_bytes: Expression, path: Expression, m
     if (fieldSetted(message, field)) {
       return Some((field, message.getField(field)))
     }
-    if (protobufOptions.emitDefaultValues) {
+    else {
       if (field.isOptional) {
         if ((field.getJavaType eq FieldDescriptor.JavaType.MESSAGE) && !message.hasField(field)) {
           // Always skip empty optional message fields. If not we will recurse indefinitely if
@@ -201,11 +188,7 @@ case class GetProtobufJsonObject(protobuf_bytes: Expression, path: Expression, m
     }
     val pathSeq = pathStr.split("\\.")
     assert(pathSeq.nonEmpty && pathSeq.head.equals("$"))
-    val printToIndex = if (pathSeq.filter(_.contains("[")).size > 0) {
-      pathSeq.zipWithIndex.filter(_._1.contains("[")).map(_._2).min
-    } else {
-      Math.max(1,pathSeq.size - 1)
-    }
+    val printToIndex = Math.max(1,pathSeq.size - 1)
     var index = 1
     while (index < printToIndex) {
       val fieldOption = getField(pathSeq(index), dynamicMessage)
@@ -216,24 +199,38 @@ case class GetProtobufJsonObject(protobuf_bytes: Expression, path: Expression, m
         dynamicMessage = fieldOption.get._2.asInstanceOf[DynamicMessage]
       } catch {
         case e: Throwable =>
-          log.warn(s"can not cast field ${pathSeq.slice(0, index + 1).mkString(".")} as a message")
-
+          return null
       }
       index += 1
     }
     val leafPathSeq = pathSeq.slice(printToIndex, pathSeq.size)
-    if(leafPathSeq.isEmpty){
-      UTF8String.fromString(currentJsonPrinter.print(dynamicMessage))
+    def getMessageFieldSizeMap(dynamicMessage: DynamicMessage):Map[String,Int]={
+      dynamicMessage.getDescriptorForType.getFields.asScala.map{
+        field=>
+          val size= if(! fieldSetted(dynamicMessage,field)) 0 else {
+            ProtobufStatsUtils.computeFieldSize(field,dynamicMessage.getField(field))
+          }
+          (field.getName,size)
+      }.toMap
     }
-    else if (leafPathSeq.length == 1 && !leafPathSeq.head.contains("[")) {
+   val resultMap= if(leafPathSeq.isEmpty){
+      //统计dynamicMessage各个field的大小
+       getMessageFieldSizeMap(dynamicMessage)
+    }
+    else{
       val fieldOption = getField(leafPathSeq.head, dynamicMessage)
       if (fieldOption.isEmpty) {
         return null
       } else {
-        UTF8String.fromString(currentJsonPrinter.printFieldWithoutKey(fieldOption.get._1, fieldOption.get._2))
+        //dynamicMessage
+        if (fieldOption.get._1.getJavaType eq FieldDescriptor.JavaType.MESSAGE)
+          {
+            getMessageFieldSizeMap(fieldOption.get._2.asInstanceOf[DynamicMessage])
+          }else{
+           Map(fieldOption.get._1.getName->ProtobufStatsUtils.computeFieldSize(fieldOption.get._1,fieldOption.get._2))
+        }
       }
-    } else {
-      GetJsonObject(Literal(currentJsonPrinter.print(dynamicMessage)), Literal("$." + leafPathSeq.mkString("."))).eval(input)
     }
+     UTF8String.fromString(gson.toJson(resultMap.asJava))
   }
 }

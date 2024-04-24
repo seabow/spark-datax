@@ -18,7 +18,7 @@ object MockData {
     Row(1l,"zhang3",19,Array("egg")),
     Row(2l,"li4",20,Array("egg")),
     Row(3l,"wang5",21,Array("egg")),
-    Row(4l,"zhao6",22,Array("egg")),
+    Row(4l,"zhao6",22,null),
   ).asJava
 
   /**

@@ -4,10 +4,18 @@ import org.apache.spark.sql.SparkSessionExtensions
 import org.apache.spark.sql.catalyst.FunctionIdentifier
 import org.apache.spark.sql.catalyst.expressions.{BloomFilterMightContain, Expression, ExpressionInfo}
 import org.apache.spark.sql.protobuf.EvolutionProtobufDataToCatalyst
-import org.apache.spark.sql.protobuf.udfs.{GetJsonObjectExtension, GetProtobufJsonObject}
+import org.apache.spark.sql.protobuf.udfs.{GetJsonObjectExtension, GetProtobufJsonObject, StatsProtobuf}
 
 class ProtobufExtensions extends (SparkSessionExtensions=>Unit){
   override def apply(extensions: SparkSessionExtensions): Unit = {
+    extensions.injectFunction(
+      FunctionIdentifier("stats_protobuf"),
+      new ExpressionInfo(
+        classOf[StatsProtobuf].getName, "stats_protobuf"),
+      (expressions: Seq[Expression]) => {
+        StatsProtobuf(expressions(0),expressions(1),expressions(2),expressions(3))
+      }
+    )
     extensions.injectFunction(
       FunctionIdentifier("get_protobuf_json_object"),
       new ExpressionInfo(

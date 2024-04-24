@@ -44,7 +44,7 @@ class ProtobufJsonTest extends ProtobufSharedSparkSession with ProtobufTestBase{
     protoDF.show(false)
     protoDF.repartition(1).createOrReplaceTempView("test_table")
     //
-    spark.sql("select get_protobuf_json_object(proto,'$.favorite_foods[0]','ComplexStudent',desc_path),get_protobuf_json_object(proto,'$.age','ComplexStudent',desc_path) from test_table").show(false)
+    spark.sql("select get_protobuf_json_object(proto,'$.favorite_foods','ComplexStudent',desc_path),get_protobuf_json_object(proto,'$.age','ComplexStudent',desc_path) from test_table").show(false)
     spark.sql("select get_protobuf_json_object(proto,'$.non_exists_field','ComplexStudent',desc_path) from test_table").show(false)
   }
 
@@ -54,8 +54,7 @@ class ProtobufJsonTest extends ProtobufSharedSparkSession with ProtobufTestBase{
 
   test("print json object extensions"){
     // build a byte
-    val complexStudentData2=(1 to 200000).map(a=>complexStudentData.asScala).flatten.asJava
-    val studentDF=spark.createDataFrame(complexStudentData2,complexStudentSchema)
+    val studentDF=spark.createDataFrame(complexStudentData,complexStudentSchema)
     //to_proto
     val protoDF=studentDF.withColumn("value",struct("id","name","age","favorite_foods")
     ).withColumn("proto",to_protobuf(col("value"),"ComplexStudent",complexStudentDesc)
@@ -63,7 +62,19 @@ class ProtobufJsonTest extends ProtobufSharedSparkSession with ProtobufTestBase{
     ).withColumn("descriptor_path",lit(complexStudentDescFile)).withColumn("msg_name",lit("ComplexStudent")).drop("value")
     protoDF.show(false)
     protoDF.repartition(1).createOrReplaceTempView("test_table")
-    spark.sql("select get_json_object(struct(proto,'ComplexStudent','target/generated-test-sources/complex_student.desc'),'$.favorite_foods[0]'),get_json_object(proto_struct,'$.age') from test_table"
-    ).foreach(row=>{})
+    spark.sql("select get_json_object(struct(proto,'ComplexStudent','target/generated-test-sources/complex_student.desc'),'$.favorite_foods[0]'),get_json_object(proto_struct,'$.age') from test_table").show(false)
+  }
+
+  test("stats_protobuf"){
+    // build a byte
+    val studentDF=spark.createDataFrame(complexStudentData,complexStudentSchema)
+    //to_proto
+    val protoDF=studentDF.withColumn("value",struct("id","name","age","favorite_foods")
+    ).withColumn("proto",to_protobuf(col("value"),"ComplexStudent",complexStudentDesc)
+    ).withColumn("desc_path",lit(complexStudentDescFile)).drop("value")
+    protoDF.show(false)
+    protoDF.repartition(1).createOrReplaceTempView("test_table")
+    //
+    spark.sql("select stats_protobuf(proto,'$','ComplexStudent',desc_path) from test_table").show(false)
   }
 }
