@@ -7,7 +7,7 @@ import org.apache.spark.sql.SparkSession
 import scala.io.Source
 
 object SparkUtils {
-  lazy val sparkSession = SparkSession.getActiveSession
+  def sparkSession = SparkSession.getActiveSession
 
   /**
    * while "--files" option of spark-submit won't upload files to driver in client mode,
