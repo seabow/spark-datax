@@ -100,12 +100,14 @@ class HiveConnector extends Connector with Logging{
       }
       else
       {
+        var useV2=true
         log.warn(s"insertInto:$table")
         try{
           dfToWrite =reorderDataFrame(df,spark.read.table(table).schema)
         }catch {
           case e:Exception =>
             log.warn(s"schema field names not match,will not reorder when writing $table",e)
+            useV2=false
         }
           // 由于static mode不安全，可能非预期的删除历史数据，这里强制dynamic。
           spark.conf.set(SQLConf.PARTITION_OVERWRITE_MODE.key, "dynamic")
@@ -132,7 +134,7 @@ class HiveConnector extends Connector with Logging{
          }
 
         dfWriter = dfToWrite.write.mode(writeMode).options(options).format(format)
-        if(format.equals("iceberg") && writeMode.equalsIgnoreCase("overwrite")){
+        if(format.equals("iceberg") && writeMode.equalsIgnoreCase("overwrite") && useV2){
           dfToWrite.writeTo(s"$table").options(options).overwritePartitions()
         }else{
           dfWriter.insertInto(s"$table")
