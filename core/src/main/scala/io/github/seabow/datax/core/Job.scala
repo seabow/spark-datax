@@ -50,15 +50,22 @@ case class Job(configContent: String, params: Map[String, String]=Map.empty, val
    def close(): Unit = {
      tasks.foreach(_.clear())
      SparkSession.getActiveSession.get.close()
+     val ec= FutureUtils.buildExecutorContext(20,true)
      if (HdfsUtils.exist(jobDir)) {
-       if(HdfsUtils.delete(jobDir)){
+       if(!HdfsUtils.getStatus(jobDir).getPath.toString.startsWith("hdfs")){
+         ObjectStorageUtils.deleteObjectStorageDir(jobDir,ec)
+       }
+       if(!HdfsUtils.exist(jobDir)||HdfsUtils.delete(jobDir)){
          log.info(s"Deleted job dir $jobDir")
        }else {
          log.warn(s"Failed delete job dir $jobDir")
        }
      }
      if(HdfsUtils.exist(checkpointPath)){
-       if(HdfsUtils.delete(checkpointPath)){
+       if(!HdfsUtils.getStatus(checkpointPath).getPath.toString.startsWith("hdfs")){
+         ObjectStorageUtils.deleteObjectStorageDir(checkpointPath,ec)
+       }
+       if(!HdfsUtils.exist(checkpointPath)||HdfsUtils.delete(checkpointPath)){
          log.info(s"Deleted checkpoint dir $checkpointPath")
        }else {
          log.warn(s"Failed delete checkpoint dir $checkpointPath")

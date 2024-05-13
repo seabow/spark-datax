@@ -6,7 +6,7 @@ import io.github.seabow.datax.core.pipeline.Connector
 import org.apache.spark.Success
 import org.apache.spark.internal.Logging
 import org.apache.spark.scheduler.{SparkListener, SparkListenerTaskEnd}
-import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.{AnalysisException, DataFrame}
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types.StructType
@@ -101,7 +101,12 @@ class HiveConnector extends Connector with Logging{
       else
       {
         log.warn(s"insertInto:$table")
-        dfToWrite =reorderDataFrame(df,spark.read.table(table).schema)
+        try{
+          dfToWrite =reorderDataFrame(df,spark.read.table(table).schema)
+        }catch {
+          case e:Exception =>
+            log.warn(s"schema field names not match,will not reorder when writing $table",e)
+        }
           // 由于static mode不安全，可能非预期的删除历史数据，这里强制dynamic。
           spark.conf.set(SQLConf.PARTITION_OVERWRITE_MODE.key, "dynamic")
         if(format.equals("iceberg"))

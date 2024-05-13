@@ -1,6 +1,6 @@
 package io.github.seabow
 
-import io.github.seabow.datax.common.{ParameterUtils, SparkUtils}
+import io.github.seabow.datax.common.{FutureUtils, ParameterUtils, SparkUtils}
 import io.github.seabow.datax.core.Job
 import org.apache.log4j.Level
 import org.apache.spark.SparkConf

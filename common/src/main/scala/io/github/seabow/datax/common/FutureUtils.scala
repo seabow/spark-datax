@@ -1,14 +1,25 @@
 package io.github.seabow.datax.common
 
-import java.util.concurrent.Executors
+import org.apache.spark.internal.Logging
+
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.{Executors, ThreadFactory}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent._
 import scala.concurrent.duration.DurationLong
 
 
-object FutureUtils {
-    def buildExecutorContext(nThreads:Int):ExecutionContext ={
-      val executor = Executors.newFixedThreadPool(nThreads)
+object FutureUtils extends Logging{
+    def buildExecutorContext(nThreads:Int,isDaemon:Boolean=false):ExecutionContext ={
+      val executor = Executors.newFixedThreadPool(nThreads,  new ThreadFactory() {
+        final private val counter = new AtomicInteger(0)
+        override def newThread(r: Runnable): Thread = {
+          val thread = new Thread(r, "datax-thread-" + counter.getAndIncrement)
+          thread.setUncaughtExceptionHandler((t: Thread, e: Throwable) => logError(s"Uncaught thread error of thread: ${ t.getName}", e))
+          thread.setDaemon(isDaemon)
+          thread
+        }
+      })
       ExecutionContext.fromExecutorService(executor)
     }
 
