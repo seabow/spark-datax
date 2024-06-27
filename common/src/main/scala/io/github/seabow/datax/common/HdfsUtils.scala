@@ -2,7 +2,7 @@ package io.github.seabow.datax.common
 
 import org.apache.hadoop.fs.{ContentSummary, FileStatus, FileSystem, Path}
 
-import java.io.InputStream
+import java.io.{BufferedInputStream, BufferedOutputStream, InputStream}
 import java.util.concurrent.atomic.AtomicLong
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -103,6 +103,20 @@ object HdfsUtils {
       true
     }
     false
+  }
+
+  def copy(srcPath:String, destPath:String):Boolean={
+     val bufferedInputStream=new BufferedInputStream(readAsInputStream(srcPath))
+     val buffer=new Array[Byte](4096)
+     val bufferedOutputStream=new BufferedOutputStream(hdfs(destPath.toPath).create(destPath.toPath))
+     var len: Int = -1
+      while ( {
+        len = bufferedInputStream.read(buffer); len
+      } != -1) {
+        bufferedOutputStream.write(buffer, 0, len)
+      }
+     bufferedOutputStream.close()
+     true
   }
 
   def getContentSummaryWithThreads(numThreads:Int)(path: String): ContentSummary = {

@@ -1,7 +1,8 @@
 package io.github.seabow.datax.common
 
 import org.apache.hadoop.conf.Configuration
-import org.apache.spark.SparkFiles
+import org.apache.spark.deploy.SparkHadoopUtil
+import org.apache.spark.{SparkEnv, SparkFiles, SparkHadoopUtilProxy}
 import org.apache.spark.sql.SparkSession
 
 import scala.io.Source
@@ -26,7 +27,13 @@ object SparkUtils {
   def getHadoopConf(): Configuration = {
     sparkSession match {
       case Some(spark) => spark.sparkContext.hadoopConfiguration
-      case None => new Configuration()
+      case None =>
+        if(SparkEnv.get!=null){
+          SparkHadoopUtilProxy.newConfiguration
+        }else{
+          new Configuration()
+        }
+
     }
   }
 }
