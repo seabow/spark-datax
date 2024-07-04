@@ -109,13 +109,15 @@ object HdfsUtils {
      val bufferedInputStream=new BufferedInputStream(readAsInputStream(srcPath))
      val buffer=new Array[Byte](4096)
      val bufferedOutputStream=new BufferedOutputStream(hdfs(destPath.toPath).create(destPath.toPath))
+     try{
      var len: Int = -1
       while ( {
         len = bufferedInputStream.read(buffer); len
       } != -1) {
         bufferedOutputStream.write(buffer, 0, len)
-      }
-     bufferedOutputStream.close()
+      }}finally {
+       bufferedOutputStream.close()
+     }
      true
   }
 

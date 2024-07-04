@@ -57,6 +57,8 @@ class FileConnector extends Connector with Logging{
       case t: Throwable =>
         log.error("write df failed", t)
         value = 0
+        //we should not catch the exception
+        throw t
     }
     value
   }
