@@ -7,7 +7,7 @@
     <groupId>io.github.seabow</groupId>
     <artifactId>spark-datax</artifactId>
     <packaging>pom</packaging>
-    <version>0.3.9-SNAPSHOT</version>
+    <version>0.3.9</version>
     <name>${project.artifactId}</name>
     <description>A configurable ETL spark framework</description>
     <url>https://github.com/seabow/spark-datax</url>
