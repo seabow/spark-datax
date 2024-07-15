@@ -35,7 +35,7 @@ object IcebergUtils extends Logging{
    val catalog=CatalogUtil.buildIcebergCatalog(catalogName,Map("type"->catalogType).asJava,sparkContext.hadoopConfiguration)
      catalog.initialize(catalogName,Map("type"->"hive").asJava)
     val table= catalog.loadTable(TableIdentifier.of(namespace, shortTableName))
-    val action=SparkActions.get.expireSnapshots(table).expireOlderThan(System.currentTimeMillis()
+    val action=SparkActions.get.expireSnapshots(table).expireOlderThan(System.currentTimeMillis()-12*60*60*1000
     ).retainLast(1)
      //expire metadata
      var filesToClear=action.expireFiles().repartition(30).cache()
