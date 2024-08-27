@@ -26,7 +26,5 @@ case class Assert(child: Expression)
     }
     expect
   }
-
-  override protected def withNewChildInternal(newChild: Expression): Assert = copy(child = newChild)
   override def dataType: DataType = BooleanType
 }

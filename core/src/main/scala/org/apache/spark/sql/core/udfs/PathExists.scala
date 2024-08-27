@@ -26,6 +26,5 @@ case class PathExists(child: Expression)
      HdfsUtils.exist(path)
   }
 
-  override protected def withNewChildInternal(newChild: Expression): PathExists = copy(child = newChild)
   override def dataType: DataType = BooleanType
 }

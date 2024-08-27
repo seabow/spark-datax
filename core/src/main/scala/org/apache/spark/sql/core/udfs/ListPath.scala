@@ -6,7 +6,6 @@ import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions.{ExpectsInputTypes, Expression, ExpressionDescription, QuaternaryExpression, UnaryExpression}
 import org.apache.spark.sql.catalyst.expressions.codegen.CodegenFallback
 import org.apache.spark.sql.catalyst.util.GenericArrayData
-import org.apache.spark.sql.errors.QueryExecutionErrors
 import org.apache.spark.sql.types._
 import org.apache.spark.unsafe.types.UTF8String
 
@@ -37,8 +36,6 @@ case class ListPath(child: Expression)
       }
     }
   }
-
-  override protected def withNewChildInternal(newChild: Expression): ListPath = copy(child = newChild)
 
   override def dataType: DataType = ArrayType(StringType, containsNull = false)
 }

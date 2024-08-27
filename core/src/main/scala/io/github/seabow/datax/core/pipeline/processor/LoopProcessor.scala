@@ -113,7 +113,7 @@ class LoopProcessor extends Processor{
     }
 
     if(yieldDFs.nonEmpty){
-      yieldDFs.reduce((a,b)=>a.unionByName(b,true))
+      yieldDFs.reduce((a,b)=>a.unionByName(b))
     }else{
       spark.emptyDataFrame
     }

@@ -5,7 +5,7 @@
     <parent>
         <artifactId>spark-datax</artifactId>
         <groupId>io.github.seabow</groupId>
-        <version>0.4.0-SNAPSHOT</version>
+        <version>3.0.2-0.4.0-SNAPSHOT</version>
         <relativePath>../../pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
@@ -17,6 +17,7 @@
         <maven.compiler.target>8</maven.compiler.target>
         <protoc-jar-maven-plugin.version>3.11.4</protoc-jar-maven-plugin.version>
         <scala.version.major>2.12</scala.version.major>
+        <spark.version_332>3.3.2</spark.version_332>
     </properties>
     <dependencies>
         <dependency>
@@ -27,13 +28,13 @@
         <dependency>
             <groupId>org.apache.spark</groupId>
             <artifactId>spark-core_${scala.version.major}</artifactId>
-            <version>${spark.version}</version>
+            <version>${spark.version_332}</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.apache.spark</groupId>
             <artifactId>spark-catalyst_${scala.version.major}</artifactId>
-            <version>${spark.version}</version>
+            <version>${spark.version_332}</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
@@ -51,7 +52,7 @@
         <dependency>
             <groupId>org.apache.spark</groupId>
             <artifactId>spark-sql_${scala.version.major}</artifactId>
-            <version>${spark.version}</version>
+            <version>${spark.version_332}</version>
             <scope>provided</scope>
             <exclusions>
                 <exclusion>
@@ -78,21 +79,21 @@
         <dependency>
             <groupId>org.apache.spark</groupId>
             <artifactId>spark-core_${scala.version.major}</artifactId>
-            <version>${spark.version}</version>
+            <version>${spark.version_332}</version>
             <type>test-jar</type>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.apache.spark</groupId>
             <artifactId>spark-catalyst_${scala.version.major}</artifactId>
-            <version>${spark.version}</version>
+            <version>${spark.version_332}</version>
             <type>test-jar</type>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.apache.spark</groupId>
             <artifactId>spark-sql_${scala.version.major}</artifactId>
-            <version>${spark.version}</version>
+            <version>${spark.version_332}</version>
             <type>test-jar</type>
             <scope>test</scope>
         </dependency>
