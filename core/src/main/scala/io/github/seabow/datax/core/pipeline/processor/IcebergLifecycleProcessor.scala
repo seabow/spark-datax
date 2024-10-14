@@ -17,6 +17,7 @@ object IcebergLifecycleProcessorConfig {
   val concurrent_clear_tables = "concurrent_clear_tables"
   val catalog_name = "catalog_name"
   val catalog_type = "catalog_type"
+  val ignore_errors = "ignore_errors"
 }
 
 class IcebergLifecycleProcessor extends Processor with Logging {
@@ -61,6 +62,7 @@ class IcebergLifecycleProcessor extends Processor with Logging {
     val catalog_name = config.getString(IcebergLifecycleProcessorConfig.catalog_name, "iceberg")
     val catalog_type = config.getString(IcebergLifecycleProcessorConfig.catalog_type, "hive")
     val concurrent_clear_tables = config.getInt(IcebergLifecycleProcessorConfig.concurrent_clear_tables, 5)
+    val ignore_errors = config.getBoolean(IcebergLifecycleProcessorConfig.ignore_errors, true)
     val inputDF = dfList.head
     val executor = Executors.newFixedThreadPool(concurrent_clear_tables)
     val ec = ExecutionContext.fromExecutorService(executor)
@@ -79,7 +81,16 @@ class IcebergLifecycleProcessor extends Processor with Logging {
         val clearTask = Future {
           val jobGroup=s"$tableName (${currentClearIndex.getAndIncrement()}/$totalSize)"
           spark.sparkContext.setJobGroup(jobGroup, s"start clear $jobGroup")
-          clearTable(tableName, retain_days, catalog_type)
+          try{
+            clearTable(tableName, retain_days, catalog_type)
+          }catch {
+            case e:Throwable=>
+              if(ignore_errors){
+                log.warn(s"skip $tableName",e)
+              }else{
+                throw e
+              }
+          }
         }(ec)
         clearTasks.append(clearTask)
     }
