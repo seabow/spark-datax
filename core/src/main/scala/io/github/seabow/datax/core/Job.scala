@@ -51,6 +51,7 @@ case class Job(configContent: String, params: Map[String, String]=Map.empty, val
      tasks.foreach(_.clear())
      SparkSession.getActiveSession.get.close()
      val ec= FutureUtils.buildExecutorContext(20,true)
+     try {
      if (HdfsUtils.exist(jobDir)) {
        if(!HdfsUtils.getStatus(jobDir).getPath.toString.startsWith("hdfs")){
          ObjectStorageUtils.deleteObjectStorageDir(jobDir,ec)
@@ -70,6 +71,8 @@ case class Job(configContent: String, params: Map[String, String]=Map.empty, val
        }else {
          log.warn(s"Failed delete checkpoint dir $checkpointPath")
        }
+     }}finally {
+       ec.shutdown()
      }
   }
 

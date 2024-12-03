@@ -44,7 +44,8 @@ class FsContentSummaryProcessor extends Processor with Logging {
                 None
             }
         }
-        opResultFutures.toSeq.filter(_.isDefined).map(_.get).toIterator
+          val result=opResultFutures.toSeq.filter(_.isDefined).map(_.get).toIterator
+        result
     }(RowEncoder(newSchema))
   }
 

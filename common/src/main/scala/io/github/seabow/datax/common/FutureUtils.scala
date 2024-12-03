@@ -10,7 +10,7 @@ import scala.concurrent.duration.DurationLong
 
 
 object FutureUtils extends Logging{
-    def buildExecutorContext(nThreads:Int,isDaemon:Boolean=false):ExecutionContext ={
+    def buildExecutorContext(nThreads:Int,isDaemon:Boolean=false):ExecutionContextExecutorService ={
       val executor = Executors.newFixedThreadPool(nThreads,  new ThreadFactory() {
         final private val counter = new AtomicInteger(0)
         override def newThread(r: Runnable): Thread = {

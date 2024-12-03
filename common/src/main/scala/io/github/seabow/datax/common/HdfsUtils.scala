@@ -144,6 +144,7 @@ object HdfsUtils {
           futureTasks.append(future)
       }
       Await.result(Future.sequence(futureTasks),Duration.Inf)
+      ec.shutdown()
       (new ContentSummary.Builder).length(summary(0).get()).fileCount(summary(1).get()).directoryCount(summary(2).get()).spaceConsumed(summary(0).get()).build
     }
   }

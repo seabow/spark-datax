@@ -49,6 +49,9 @@ object DataFrameUtils {
                 if (!queue.isEmpty) {return true}
                 if(exceptions.nonEmpty){exceptions.foreach(e=>throw e)}
               }
+              if(!ec.isShutdown){
+                ec.shutdown()
+              }
               !queue.isEmpty
             }
             def next(): U = queue.take()

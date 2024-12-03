@@ -53,6 +53,7 @@ class TempDirCleanProcessor extends Processor with Logging {
               }
         }
         Await.result(Future.sequence(clearTasks), Duration.Inf)
+        ec.shutdown()
         println("Partition done.")
     }
     spark.emptyDataFrame
