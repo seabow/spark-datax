@@ -1,7 +1,7 @@
 package io.github.seabow.datax.core.pipeline.processor
 
 import io.github.seabow.datax.common.ConfigUtils._
-import io.github.seabow.datax.common.{HdfsUtils, IcebergUtils}
+import io.github.seabow.datax.common.{HdfsUtils, IcebergUtils, ObjectStorageUtils}
 import io.github.seabow.datax.core.pipeline.Processor
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.DataFrame
@@ -18,11 +18,12 @@ object IcebergLifecycleProcessorConfig {
   val catalog_name = "catalog_name"
   val catalog_type = "catalog_type"
   val ignore_errors = "ignore_errors"
+  val is_object_storage ="is_object_storage"
 }
 
 class IcebergLifecycleProcessor extends Processor with Logging {
 
-  def clearTable(tableName: String, retainDays: Int, catalogType: String): Unit = {
+  def clearTable(tableName: String, retainDays: Int, catalogType: String,isObjectStorage:Boolean): Unit = {
     val (partitionSpec, location) = IcebergUtils.getPartitionSpecAndLocation(tableName)
     val iceberegTableDataDir=location+"/data"
     if(!HdfsUtils.exist(iceberegTableDataDir)){
@@ -47,12 +48,17 @@ class IcebergLifecycleProcessor extends Processor with Logging {
           val executor = Executors.newFixedThreadPool(20) // 这里设置了最大线程数为20
           val ec = ExecutionContext.fromExecutorService(executor)
           val clearTasks=ListBuffer.empty[Future[Any]]
-          dirs.foreach{
-            dir=>
-              val clearTask=Future{HdfsUtils.delete(dir)}(ec)
-            clearTasks.append(clearTask)
+          if(isObjectStorage){
+                ObjectStorageUtils.deleteObjectStorageDirs(dirs.toSeq,ec)
+          }else{
+            dirs.foreach{
+              dir=>
+                val clearTask=Future{HdfsUtils.delete(dir)}(ec)
+                clearTasks.append(clearTask)
+            }
+            Await.result(Future.sequence(clearTasks),Duration.Inf)
           }
-          Await.result(Future.sequence(clearTasks),Duration.Inf)
+          ec.shutdown()
           println("Partition Done!")
       }
     }
@@ -63,6 +69,7 @@ class IcebergLifecycleProcessor extends Processor with Logging {
     val catalog_type = config.getString(IcebergLifecycleProcessorConfig.catalog_type, "hive")
     val concurrent_clear_tables = config.getInt(IcebergLifecycleProcessorConfig.concurrent_clear_tables, 5)
     val ignore_errors = config.getBoolean(IcebergLifecycleProcessorConfig.ignore_errors, true)
+    val is_object_storage =config.getBoolean(IcebergLifecycleProcessorConfig.is_object_storage,false)
     val inputDF = dfList.head
     val executor = Executors.newFixedThreadPool(concurrent_clear_tables)
     val ec = ExecutionContext.fromExecutorService(executor)
@@ -82,7 +89,7 @@ class IcebergLifecycleProcessor extends Processor with Logging {
           val jobGroup=s"$tableName (${currentClearIndex.getAndIncrement()}/$totalSize)"
           spark.sparkContext.setJobGroup(jobGroup, s"start clear $jobGroup")
           try{
-            clearTable(tableName, retain_days, catalog_type)
+            clearTable(tableName, retain_days, catalog_type,is_object_storage)
           }catch {
             case e:Throwable=>
               if(ignore_errors){
