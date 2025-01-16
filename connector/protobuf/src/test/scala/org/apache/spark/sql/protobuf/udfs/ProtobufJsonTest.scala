@@ -30,7 +30,7 @@ class ProtobufJsonTest extends ProtobufSharedSparkSession with ProtobufTestBase{
     stage1DF.show(false)
     stage1DF.createOrReplaceTempView("test_table")
     //
-    spark.sql("select get_protobuf_json_object(proto,'id','Student',desc_path) from test_table").show(false)
+    spark.sql("select get_protobuf_json_object(proto,'$.id','Student',desc_path) from test_table").show(false)
    }
 
 
