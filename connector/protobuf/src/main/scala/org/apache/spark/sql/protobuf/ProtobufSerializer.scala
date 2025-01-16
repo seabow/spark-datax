@@ -17,7 +17,7 @@
 package org.apache.spark.sql.protobuf
 
 import scala.collection.JavaConverters._
-import com.google.protobuf.{Duration, DynamicMessage, Timestamp}
+import com.google.protobuf.{Duration, UncheckedDynamicMessage, Timestamp}
 import com.google.protobuf.Descriptors.{Descriptor, FieldDescriptor}
 import com.google.protobuf.Descriptors.FieldDescriptor.JavaType._
 import org.apache.spark.internal.Logging
@@ -188,12 +188,12 @@ private[sql] class ProtobufSerializer(
         (getter, ordinal) =>
           val mapData = getter.getMap(ordinal)
           val len = mapData.numElements()
-          val list = new java.util.ArrayList[DynamicMessage]()
+          val list = new java.util.ArrayList[UncheckedDynamicMessage]()
           val keyArray = mapData.keyArray()
           val valueArray = mapData.valueArray()
           var i = 0
           while (i < len) {
-            val result = DynamicMessage.newBuilder(fieldDescriptor.getMessageType)
+            val result = UncheckedDynamicMessage.newBuilder(fieldDescriptor.getMessageType)
             if (valueContainsNull && valueArray.isNullAt(i)) {
               result.setField(keyField, keyConverter(keyArray, i))
               result.setField(valueField, valueField.getDefaultValue)
@@ -242,7 +242,7 @@ private[sql] class ProtobufSerializer(
                                   catalystStruct: StructType,
                                   descriptor: Descriptor,
                                   catalystPath: Seq[String],
-                                  protoPath: Seq[String]): InternalRow => DynamicMessage = {
+                                  protoPath: Seq[String]): InternalRow => UncheckedDynamicMessage = {
 
     val protoSchemaHelper =
       new ProtobufUtils.ProtoSchemaHelper(descriptor, catalystStruct, protoPath, catalystPath)
@@ -264,7 +264,7 @@ private[sql] class ProtobufSerializer(
 
     val numFields = catalystStruct.length
     row: InternalRow =>
-      val result = DynamicMessage.newBuilder(descriptor)
+      val result = UncheckedDynamicMessage.newBuilder(descriptor)
       var i = 0
       while (i < numFields) {
         if (row.isNullAt(i)) {

@@ -1,7 +1,7 @@
 package org.apache.spark.sql.protobuf.udfs
 
 import com.google.protobuf.Descriptors.{Descriptor, FieldDescriptor}
-import com.google.protobuf.DynamicMessage
+import com.google.protobuf.UncheckedDynamicMessage
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions.codegen.CodegenFallback
@@ -24,7 +24,7 @@ object GetProtobufJsonObject {
   @transient private lazy val messageDescriptorMap =
   TrieMap.empty[(String, String), Option[Descriptor]]
   @transient private lazy val messageCahceMap =
-    TrieMap.empty[InternalRow, DynamicMessage]
+    TrieMap.empty[InternalRow, UncheckedDynamicMessage]
   private lazy val protobufOptions = ProtobufOptions()
   //we don't parse any type for protobuf
   private lazy val jsonPrinter = {
@@ -131,11 +131,11 @@ case class GetProtobufJsonObject(protobuf_bytes: Expression, path: Expression, m
     }
   }
 
-  def fieldSetted(message:DynamicMessage,field:FieldDescriptor): Boolean ={
+  def fieldSetted(message:UncheckedDynamicMessage, field:FieldDescriptor): Boolean ={
     (!field.isRepeated &&  message.hasField(field) ) || message.getRepeatedFieldCount(field)>0
   }
 
-  def getField(fieldName: String, message: DynamicMessage): Option[(FieldDescriptor, AnyRef)] = {
+  def getField(fieldName: String, message: UncheckedDynamicMessage): Option[(FieldDescriptor, AnyRef)] = {
     val fieldMap = message.getDescriptorForType.getFields.asScala
       .groupBy(_.getName.toLowerCase(Locale.ROOT))
       .mapValues(_.toSeq)
@@ -194,7 +194,7 @@ case class GetProtobufJsonObject(protobuf_bytes: Expression, path: Expression, m
     var dynamicMessage = if (messageCahceMap.contains(input)) {
       messageCahceMap(input)
     } else {
-      val result = DynamicMessage.parseFrom(descriptor.get, protoBinary)
+      val result = UncheckedDynamicMessage.parseFrom(descriptor.get, protoBinary)
       messageCahceMap.clear()
       messageCahceMap.put(input, result)
       result
@@ -213,7 +213,7 @@ case class GetProtobufJsonObject(protobuf_bytes: Expression, path: Expression, m
         return null
       }
       try {
-        dynamicMessage = fieldOption.get._2.asInstanceOf[DynamicMessage]
+        dynamicMessage = fieldOption.get._2.asInstanceOf[UncheckedDynamicMessage]
       } catch {
         case e: Throwable =>
           log.warn(s"can not cast field ${pathSeq.slice(0, index + 1).mkString(".")} as a message")

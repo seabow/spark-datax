@@ -1,7 +1,7 @@
 package org.apache.spark.sql.protobuf.udfs
 
 import com.google.protobuf.Descriptors.{Descriptor, FieldDescriptor}
-import com.google.protobuf.DynamicMessage
+import com.google.protobuf.UncheckedDynamicMessage
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.Column
 import org.apache.spark.sql.catalyst.InternalRow

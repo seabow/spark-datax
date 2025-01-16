@@ -17,7 +17,7 @@
 
 package org.apache.spark.sql.protobuf
 
-import com.google.protobuf.{ByteString, DynamicMessage, Message}
+import com.google.protobuf.{ByteString, UncheckedDynamicMessage, Message}
 
 import org.apache.spark.SparkFunSuite
 import org.apache.spark.sql.{RandomDataGenerator, Row}
@@ -164,7 +164,7 @@ class ProtobufCatalystDataConversionTest
 
     val deserializer = new ProtobufDeserializer(descriptor, dataType, filters)
 
-    val dynMsg = DynamicMessage.parseFrom(descriptor, data.toByteArray)
+    val dynMsg = UncheckedDynamicMessage.parseFrom(descriptor, data.toByteArray)
     val deserialized = deserializer.deserialize(dynMsg)
 
     // Verify Java class deserializer matches with descriptor based serializer.
@@ -172,7 +172,7 @@ class ProtobufCatalystDataConversionTest
       .buildDescriptorFromJavaClass(s"$javaClassNamePrefix$messageName")
     assert(dataType == SchemaConverters.toSqlType(javaDescriptor).dataType)
     val javaDeserialized = new ProtobufDeserializer(javaDescriptor, dataType, filters)
-      .deserialize(DynamicMessage.parseFrom(javaDescriptor, data.toByteArray))
+      .deserialize(UncheckedDynamicMessage.parseFrom(javaDescriptor, data.toByteArray))
     assert(deserialized == javaDeserialized)
 
     expected match {
@@ -207,7 +207,7 @@ class ProtobufCatalystDataConversionTest
       .add("age", "int")
 
     val descriptor = ProtobufUtils.buildDescriptor(testFileDesc, "Person")
-    val dynamicMessage = DynamicMessage
+    val dynamicMessage = UncheckedDynamicMessage
       .newBuilder(descriptor)
       .setField(descriptor.findFieldByName("name"), "Maxim")
       .setField(descriptor.findFieldByName("age"), 39)

@@ -18,7 +18,7 @@
 package org.apache.spark.sql.protobuf
 
 import com.google.protobuf.Descriptors.Descriptor
-import com.google.protobuf.DynamicMessage
+import com.google.protobuf.UncheckedDynamicMessage
 import org.apache.spark.sql.catalyst.{InternalRow, NoopFilters}
 import org.apache.spark.sql.protobuf.utils.ProtobufUtils
 import org.apache.spark.sql.test.SharedSparkSession
@@ -45,12 +45,12 @@ class ProtobufSerdeSuite extends SharedSparkSession with ProtobufTestBase {
     withFieldMatchType { fieldMatch =>
       val protoFile = ProtobufUtils.buildDescriptor(testFileDesc, "SerdeBasicMessage")
 
-      val dynamicMessageFoo = DynamicMessage
+      val dynamicMessageFoo = UncheckedDynamicMessage
         .newBuilder(protoFile.getFile.findMessageTypeByName("Foo"))
         .setField(protoFile.getFile.findMessageTypeByName("Foo").findFieldByName("bar"), 10902)
         .build()
 
-      val dynamicMessage = DynamicMessage
+      val dynamicMessage = UncheckedDynamicMessage
         .newBuilder(protoFile)
         .setField(protoFile.findFieldByName("foo"), dynamicMessageFoo)
         .build()
@@ -78,7 +78,7 @@ class ProtobufSerdeSuite extends SharedSparkSession with ProtobufTestBase {
     val serializer = new ProtobufSerializer(sqlType, desc, nullable = false) // Should work fine.
 
     // Should be able to deserialize a row.
-    val protoMessage = serializer.serialize(InternalRow(22)).asInstanceOf[DynamicMessage]
+    val protoMessage = serializer.serialize(InternalRow(22)).asInstanceOf[UncheckedDynamicMessage]
 
     // Verify the descriptor and the value.
     assert(protoMessage.getDescriptorForType == desc)

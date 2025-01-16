@@ -18,8 +18,7 @@ package org.apache.spark.sql.protobuf
 
 import scala.collection.JavaConverters._
 import scala.util.control.NonFatal
-import com.google.protobuf.DynamicMessage
-import com.google.protobuf.TypeRegistry
+import com.google.protobuf.{TypeRegistry, UncheckedDynamicMessage}
 import org.apache.spark.sql.catalyst.expressions.{ExpectsInputTypes, Expression, SpecificInternalRow, UnaryExpression}
 import org.apache.spark.sql.catalyst.expressions.codegen.{CodeGenerator, CodegenContext, ExprCode}
 import org.apache.spark.sql.catalyst.util.{FailFastMode, ParseMode, PermissiveMode}
@@ -79,7 +78,7 @@ private[sql] case class ProtobufDataToCatalyst(
     )
   }
 
-  @transient private var result: DynamicMessage = _
+  @transient private var result: UncheckedDynamicMessage = _
 
   @transient private lazy val parseMode: ParseMode = {
     val mode = protobufOptions.parseMode
@@ -115,7 +114,7 @@ private[sql] case class ProtobufDataToCatalyst(
   override def nullSafeEval(input: Any): Any = {
     val binary = input.asInstanceOf[Array[Byte]]
     try {
-      result = DynamicMessage.parseFrom(messageDescriptor, binary)
+      result = UncheckedDynamicMessage.parseFrom(messageDescriptor, binary)
       // If the Java class is available, it is likely more efficient to parse with it than using
       // DynamicMessage. Can consider it in the future if parsing overhead is noticeable.
 

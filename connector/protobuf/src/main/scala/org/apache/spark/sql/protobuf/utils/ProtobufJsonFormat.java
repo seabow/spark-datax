@@ -865,7 +865,7 @@ public class ProtobufJsonFormat {
       }
       ByteString content = (ByteString) message.getField(valueField);
       Message contentMessage =
-          DynamicMessage.getDefaultInstance(type).getParserForType().parseFrom(content);
+          UncheckedDynamicMessage.getDefaultInstance(type).getParserForType().parseFrom(content);
       WellKnownTypePrinter printer = wellKnownTypePrinters.get(getTypeName(typeUrl));
       if (printer != null) {
         // If the type is one of the well-known types, we use a special
@@ -1525,7 +1525,7 @@ public class ProtobufJsonFormat {
       }
       builder.setField(typeUrlField, typeUrl);
       Message.Builder contentBuilder =
-          DynamicMessage.getDefaultInstance(contentType).newBuilderForType();
+          UncheckedDynamicMessage.getDefaultInstance(contentType).newBuilderForType();
       WellKnownTypeParser specialParser = wellKnownTypeParsers.get(contentType.getFullName());
       if (specialParser != null) {
         JsonElement value = object.get("value");

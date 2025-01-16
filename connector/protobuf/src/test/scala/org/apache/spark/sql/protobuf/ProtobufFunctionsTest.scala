@@ -16,7 +16,7 @@
  */
 package org.apache.spark.sql.protobuf
 
-import com.google.protobuf.{ByteString, DynamicMessage, Any => AnyProto}
+import com.google.protobuf.{ByteString, UncheckedDynamicMessage, Any => AnyProto}
 import org.apache.spark.sql._
 import org.apache.spark.sql.functions.{lit, struct, typedLit}
 import org.apache.spark.sql.protobuf.protos.Proto2Messages.Proto2AllTypes
@@ -161,7 +161,7 @@ class ProtobufFunctionsTest extends QueryTest with SharedSparkSession with Proto
     val repeatedMessageDesc = ProtobufUtils.buildDescriptor(testFileDesc, "RepeatedMessage")
     val basicMessageDesc = ProtobufUtils.buildDescriptor(testFileDesc, "BasicMessage")
 
-    val basicMessage = DynamicMessage
+    val basicMessage = UncheckedDynamicMessage
       .newBuilder(basicMessageDesc)
       .setField(basicMessageDesc.findFieldByName("id"), 1111L)
       .setField(basicMessageDesc.findFieldByName("string_value"), "value")
@@ -175,7 +175,7 @@ class ProtobufFunctionsTest extends QueryTest with SharedSparkSession with Proto
         ByteString.copyFromUtf8("ProtobufDeserializer"))
       .build()
 
-    val dynamicMessage = DynamicMessage
+    val dynamicMessage = UncheckedDynamicMessage
       .newBuilder(repeatedMessageDesc)
       .addRepeatedField(repeatedMessageDesc.findFieldByName("basic_message"), basicMessage)
       .build()
@@ -198,7 +198,7 @@ class ProtobufFunctionsTest extends QueryTest with SharedSparkSession with Proto
     val repeatedMessageDesc = ProtobufUtils.buildDescriptor(testFileDesc, "RepeatedMessage")
     val basicMessageDesc = ProtobufUtils.buildDescriptor(testFileDesc, "BasicMessage")
 
-    val basicMessage1 = DynamicMessage
+    val basicMessage1 = UncheckedDynamicMessage
       .newBuilder(basicMessageDesc)
       .setField(basicMessageDesc.findFieldByName("id"), 1111L)
       .setField(basicMessageDesc.findFieldByName("string_value"), "value1")
@@ -211,7 +211,7 @@ class ProtobufFunctionsTest extends QueryTest with SharedSparkSession with Proto
         basicMessageDesc.findFieldByName("bytes_value"),
         ByteString.copyFromUtf8("ProtobufDeserializer1"))
       .build()
-    val basicMessage2 = DynamicMessage
+    val basicMessage2 = UncheckedDynamicMessage
       .newBuilder(basicMessageDesc)
       .setField(basicMessageDesc.findFieldByName("id"), 1112L)
       .setField(basicMessageDesc.findFieldByName("string_value"), "value2")
@@ -225,7 +225,7 @@ class ProtobufFunctionsTest extends QueryTest with SharedSparkSession with Proto
         ByteString.copyFromUtf8("ProtobufDeserializer2"))
       .build()
 
-    val dynamicMessage = DynamicMessage
+    val dynamicMessage = UncheckedDynamicMessage
       .newBuilder(repeatedMessageDesc)
       .addRepeatedField(repeatedMessageDesc.findFieldByName("basic_message"), basicMessage1)
       .addRepeatedField(repeatedMessageDesc.findFieldByName("basic_message"), basicMessage2)
@@ -248,7 +248,7 @@ class ProtobufFunctionsTest extends QueryTest with SharedSparkSession with Proto
   test("roundtrip in from_protobuf and to_protobuf - Map") {
     val messageMapDesc = ProtobufUtils.buildDescriptor(testFileDesc, "SimpleMessageMap")
 
-    val mapStr1 = DynamicMessage
+    val mapStr1 = UncheckedDynamicMessage
       .newBuilder(messageMapDesc.findNestedTypeByName("StringMapdataEntry"))
       .setField(
         messageMapDesc.findNestedTypeByName("StringMapdataEntry").findFieldByName("key"),
@@ -257,7 +257,7 @@ class ProtobufFunctionsTest extends QueryTest with SharedSparkSession with Proto
         messageMapDesc.findNestedTypeByName("StringMapdataEntry").findFieldByName("value"),
         "value1")
       .build()
-    val mapStr2 = DynamicMessage
+    val mapStr2 = UncheckedDynamicMessage
       .newBuilder(messageMapDesc.findNestedTypeByName("StringMapdataEntry"))
       .setField(
         messageMapDesc.findNestedTypeByName("StringMapdataEntry").findFieldByName("key"),
@@ -266,7 +266,7 @@ class ProtobufFunctionsTest extends QueryTest with SharedSparkSession with Proto
         messageMapDesc.findNestedTypeByName("StringMapdataEntry").findFieldByName("value"),
         "value2")
       .build()
-    val mapInt64 = DynamicMessage
+    val mapInt64 = UncheckedDynamicMessage
       .newBuilder(messageMapDesc.findNestedTypeByName("Int64MapdataEntry"))
       .setField(
         messageMapDesc.findNestedTypeByName("Int64MapdataEntry").findFieldByName("key"),
@@ -275,7 +275,7 @@ class ProtobufFunctionsTest extends QueryTest with SharedSparkSession with Proto
         messageMapDesc.findNestedTypeByName("Int64MapdataEntry").findFieldByName("value"),
         0x90000000001L)
       .build()
-    val mapInt32 = DynamicMessage
+    val mapInt32 = UncheckedDynamicMessage
       .newBuilder(messageMapDesc.findNestedTypeByName("Int32MapdataEntry"))
       .setField(
         messageMapDesc.findNestedTypeByName("Int32MapdataEntry").findFieldByName("key"),
@@ -284,7 +284,7 @@ class ProtobufFunctionsTest extends QueryTest with SharedSparkSession with Proto
         messageMapDesc.findNestedTypeByName("Int32MapdataEntry").findFieldByName("value"),
         54321)
       .build()
-    val mapFloat = DynamicMessage
+    val mapFloat = UncheckedDynamicMessage
       .newBuilder(messageMapDesc.findNestedTypeByName("FloatMapdataEntry"))
       .setField(
         messageMapDesc.findNestedTypeByName("FloatMapdataEntry").findFieldByName("key"),
@@ -293,7 +293,7 @@ class ProtobufFunctionsTest extends QueryTest with SharedSparkSession with Proto
         messageMapDesc.findNestedTypeByName("FloatMapdataEntry").findFieldByName("value"),
         109202.234f)
       .build()
-    val mapDouble = DynamicMessage
+    val mapDouble = UncheckedDynamicMessage
       .newBuilder(messageMapDesc.findNestedTypeByName("DoubleMapdataEntry"))
       .setField(
         messageMapDesc.findNestedTypeByName("DoubleMapdataEntry").findFieldByName("key"),
@@ -302,7 +302,7 @@ class ProtobufFunctionsTest extends QueryTest with SharedSparkSession with Proto
         messageMapDesc.findNestedTypeByName("DoubleMapdataEntry").findFieldByName("value"),
         109202.12d)
       .build()
-    val mapBool = DynamicMessage
+    val mapBool = UncheckedDynamicMessage
       .newBuilder(messageMapDesc.findNestedTypeByName("BoolMapdataEntry"))
       .setField(
         messageMapDesc.findNestedTypeByName("BoolMapdataEntry").findFieldByName("key"),
@@ -312,7 +312,7 @@ class ProtobufFunctionsTest extends QueryTest with SharedSparkSession with Proto
         false)
       .build()
 
-    val dynamicMessage = DynamicMessage
+    val dynamicMessage = UncheckedDynamicMessage
       .newBuilder(messageMapDesc)
       .setField(messageMapDesc.findFieldByName("key"), "key")
       .setField(messageMapDesc.findFieldByName("value"), "value")
@@ -343,7 +343,7 @@ class ProtobufFunctionsTest extends QueryTest with SharedSparkSession with Proto
     val messageEnumDesc = ProtobufUtils.buildDescriptor(testFileDesc, "SimpleMessageEnum")
     val basicEnumDesc = ProtobufUtils.buildDescriptor(testFileDesc, "BasicEnumMessage")
 
-    val dynamicMessage = DynamicMessage
+    val dynamicMessage = UncheckedDynamicMessage
       .newBuilder(messageEnumDesc)
       .setField(messageEnumDesc.findFieldByName("key"), "key")
       .setField(messageEnumDesc.findFieldByName("value"), "value")
@@ -388,18 +388,18 @@ class ProtobufFunctionsTest extends QueryTest with SharedSparkSession with Proto
     val messageIncludeDesc = ProtobufUtils.buildDescriptor(testFileDesc, "IncludedExample")
     val messageOtherDesc = ProtobufUtils.buildDescriptor(testFileDesc, "OtherExample")
 
-    val otherMessage = DynamicMessage
+    val otherMessage = UncheckedDynamicMessage
       .newBuilder(messageOtherDesc)
       .setField(messageOtherDesc.findFieldByName("other"), "other value")
       .build()
 
-    val includeMessage = DynamicMessage
+    val includeMessage = UncheckedDynamicMessage
       .newBuilder(messageIncludeDesc)
       .setField(messageIncludeDesc.findFieldByName("included"), "included value")
       .setField(messageIncludeDesc.findFieldByName("other"), otherMessage)
       .build()
 
-    val dynamicMessage = DynamicMessage
+    val dynamicMessage = UncheckedDynamicMessage
       .newBuilder(messageMultiDesc)
       .setField(messageMultiDesc.findFieldByName("included_example"), includeMessage)
       .build()
@@ -468,7 +468,7 @@ class ProtobufFunctionsTest extends QueryTest with SharedSparkSession with Proto
     val oldProducer = ProtobufUtils.buildDescriptor(descBytes, "oldProducer")
     val newConsumer = ProtobufUtils.buildDescriptor(descBytes, "newConsumer")
 
-    val oldProducerMessage = DynamicMessage
+    val oldProducerMessage = UncheckedDynamicMessage
       .newBuilder(oldProducer)
       .setField(oldProducer.findFieldByName("key"), "key")
       .build()
@@ -510,7 +510,7 @@ class ProtobufFunctionsTest extends QueryTest with SharedSparkSession with Proto
     val newProducer = ProtobufUtils.buildDescriptor(descBytes, "newProducer")
     val oldConsumer = ProtobufUtils.buildDescriptor(descBytes, "oldConsumer")
 
-    val newProducerMessage = DynamicMessage
+    val newProducerMessage = UncheckedDynamicMessage
       .newBuilder(newProducer)
       .setField(newProducer.findFieldByName("key"), "key")
       .setField(newProducer.findFieldByName("value"), 1)
@@ -556,7 +556,7 @@ class ProtobufFunctionsTest extends QueryTest with SharedSparkSession with Proto
     val binary = toProtobuf.take(1).toSeq(0).get(0).asInstanceOf[Array[Byte]]
 
     val messageDescriptor = ProtobufUtils.buildDescriptor(testFileDesc, "requiredMsg")
-    val actualMessage = DynamicMessage.parseFrom(messageDescriptor, binary)
+    val actualMessage = UncheckedDynamicMessage.parseFrom(messageDescriptor, binary)
 
     assert(actualMessage.getField(messageDescriptor.findFieldByName("key"))
       == inputDf.select("requiredMsg.key").take(1).toSeq(0).get(0))
@@ -579,7 +579,7 @@ class ProtobufFunctionsTest extends QueryTest with SharedSparkSession with Proto
   test("from_protobuf filter to_protobuf") {
     val basicMessageDesc = ProtobufUtils.buildDescriptor(testFileDesc, "BasicMessage")
 
-    val basicMessage = DynamicMessage
+    val basicMessage = UncheckedDynamicMessage
       .newBuilder(basicMessageDesc)
       .setField(basicMessageDesc.findFieldByName("id"), 1111L)
       .setField(basicMessageDesc.findFieldByName("string_value"), "slam")

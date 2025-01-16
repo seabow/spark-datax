@@ -17,9 +17,9 @@
 package org.apache.spark.sql.protobuf
 
 import java.util.concurrent.TimeUnit
-import com.google.protobuf.{ByteString, DynamicMessage, Message, TypeRegistry}
+import com.google.protobuf.{ByteString, UncheckedDynamicMessage, Message, TypeRegistry}
 import com.google.protobuf.Descriptors._
-import com.google.protobuf.Descriptors.FieldDescriptor.JavaType.{INT, _}
+import com.google.protobuf.Descriptors.FieldDescriptor.JavaType._
 import com.google.protobuf.util.JsonFormat
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.AnalysisException
@@ -61,7 +61,7 @@ private[sql] class ProtobufDeserializer(
           val applyFilters = filters.skipRow(resultRow, _)
           val writer = getRecordWriter(rootDescriptor, st, Nil, Nil, applyFilters)
           (data: Any) => {
-            val record = data.asInstanceOf[DynamicMessage]
+            val record = data.asInstanceOf[UncheckedDynamicMessage]
             val skipRow = writer(fieldUpdater, record)
             if (skipRow) None else Some(resultRow)
           }
@@ -236,7 +236,7 @@ private[sql] class ProtobufDeserializer(
         (updater, ordinal, value) =>
           val secondsField = protoType.getMessageType.getFields.get(0)
           val nanoSecondsField = protoType.getMessageType.getFields.get(1)
-          val message = value.asInstanceOf[DynamicMessage]
+          val message = value.asInstanceOf[UncheckedDynamicMessage]
           val seconds = message.getField(secondsField).asInstanceOf[Long]
           val nanoSeconds = message.getField(nanoSecondsField).asInstanceOf[Int]
           val micros = DateTimeUtils.millisToMicros(seconds * 1000)
@@ -246,7 +246,7 @@ private[sql] class ProtobufDeserializer(
         (updater, ordinal, value) =>
           val secondsField = protoType.getMessageType.getFields.get(0)
           val nanoSecondsField = protoType.getMessageType.getFields.get(1)
-          val message = value.asInstanceOf[DynamicMessage]
+          val message = value.asInstanceOf[UncheckedDynamicMessage]
           val seconds = message.getField(secondsField).asInstanceOf[Long]
           val nanoSeconds = message.getField(nanoSecondsField).asInstanceOf[Int]
           val micros = DateTimeUtils.millisToMicros(seconds * 1000)
@@ -256,7 +256,7 @@ private[sql] class ProtobufDeserializer(
         if protoType.getMessageType.getFullName == "google.protobuf.Any" =>
         (updater, ordinal, value) =>
           // Convert 'Any' protobuf message to JSON string.
-          val jsonStr = jsonPrinter.print(value.asInstanceOf[DynamicMessage])
+          val jsonStr = jsonPrinter.print(value.asInstanceOf[UncheckedDynamicMessage])
           updater.set(ordinal, UTF8String.fromString(jsonStr))
 
       case (MESSAGE, st: StructType) =>
@@ -268,7 +268,7 @@ private[sql] class ProtobufDeserializer(
           applyFilters = _ => false)
         (updater, ordinal, value) =>
           val row = new SpecificInternalRow(st)
-          writeRecord(new RowUpdater(row), value.asInstanceOf[DynamicMessage])
+          writeRecord(new RowUpdater(row), value.asInstanceOf[UncheckedDynamicMessage])
           updater.set(ordinal, row)
 
       case (ENUM, StringType) =>
@@ -312,7 +312,7 @@ private[sql] class ProtobufDeserializer(
                                catalystType: StructType,
                                protoPath: Seq[String],
                                catalystPath: Seq[String],
-                               applyFilters: Int => Boolean): (CatalystDataUpdater, DynamicMessage) => Boolean = {
+                               applyFilters: Int => Boolean): (CatalystDataUpdater, UncheckedDynamicMessage) => Boolean = {
 
     val protoSchemaHelper =
       new ProtobufUtils.ProtoSchemaHelper(protoType, catalystType, protoPath, catalystPath)
@@ -355,7 +355,7 @@ private[sql] class ProtobufDeserializer(
     }
   }
 
-  private def getFieldValue(record: DynamicMessage, field: FieldDescriptor): AnyRef = {
+  private def getFieldValue(record: UncheckedDynamicMessage, field: FieldDescriptor): AnyRef = {
     // We return a value if one of:
     // - the field is repeated
     // - the field is explicitly present in the serialized proto

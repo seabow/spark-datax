@@ -16,8 +16,7 @@
  */
 package org.apache.spark.sql.protobuf
 
-import com.google.protobuf.DynamicMessage
-
+import com.google.protobuf.UncheckedDynamicMessage
 import org.apache.spark.sql.catalyst.expressions.{Expression, UnaryExpression}
 import org.apache.spark.sql.catalyst.expressions.codegen.{CodegenContext, ExprCode}
 import org.apache.spark.sql.protobuf.utils.ProtobufUtils
@@ -42,7 +41,7 @@ private[sql] case class CatalystDataToProtobuf(
     new ProtobufSerializer(child.dataType, protoDescriptor, child.nullable)
 
   override def nullSafeEval(input: Any): Any = {
-    val dynamicMessage = serializer.serialize(input).asInstanceOf[DynamicMessage]
+    val dynamicMessage = serializer.serialize(input).asInstanceOf[UncheckedDynamicMessage]
     dynamicMessage.toByteArray
   }
 

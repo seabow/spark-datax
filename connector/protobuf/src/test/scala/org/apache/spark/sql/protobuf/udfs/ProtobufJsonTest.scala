@@ -1,6 +1,6 @@
 package org.apache.spark.sql.protobuf.udfs
 
-import com.google.protobuf.DynamicMessage
+import com.google.protobuf.UncheckedDynamicMessage
 import org.apache.spark.sql.functions.{col, expr, lit, struct}
 import org.apache.spark.sql.protobuf.functions.to_protobuf
 import org.apache.spark.sql.protobuf.utils.ProtobufUtils
@@ -76,5 +76,12 @@ class ProtobufJsonTest extends ProtobufSharedSparkSession with ProtobufTestBase{
     protoDF.repartition(1).createOrReplaceTempView("test_table")
     //
     spark.sql("select stats_protobuf(proto,'$','ComplexStudent',desc_path) from test_table").show(false)
+  }
+
+  test("snapshot extract"){
+    val snapshotContentDF=spark.read.parquet("src/test/test_data/snapshot/parquet")
+    snapshotContentDF.createOrReplaceTempView("snapshot")
+    spark.sql("select get_json_object(struct(content.pb_record,content.msg_name,'src/test/test_data/snapshot/descriptor'),'$.scene_snapshot') from snapshot").show()
+
   }
 }

@@ -4,7 +4,7 @@ import com.fasterxml.jackson.core.JsonParser
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.google.gson.Gson
 import com.google.protobuf.Descriptors.{Descriptor, FieldDescriptor}
-import com.google.protobuf.{DynamicMessage, ProtobufStatsUtils}
+import com.google.protobuf.{UncheckedDynamicMessage, ProtobufStatsUtils}
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions.codegen.CodegenFallback
@@ -28,7 +28,7 @@ object StatsProtobuf {
     TrieMap.empty[(String, String), Option[Descriptor]]
 
   @transient private lazy val messageCahceMap =
-    TrieMap.empty[InternalRow, DynamicMessage]
+    TrieMap.empty[InternalRow, UncheckedDynamicMessage]
 }
 @ExpressionDescription(
   usage = "_FUNC_(protobuf_bytes, path,msgName,descFilePath) - stats protobuf size in bytes.",
@@ -118,11 +118,11 @@ case class StatsProtobuf(protobuf_bytes: Expression, path: Expression, msgName: 
     }
   }
 
-  def fieldSetted(message:DynamicMessage,field:FieldDescriptor): Boolean ={
+  def fieldSetted(message:UncheckedDynamicMessage, field:FieldDescriptor): Boolean ={
     (!field.isRepeated &&  message.hasField(field) ) || message.getRepeatedFieldCount(field)>0
   }
 
-  def getField(fieldName: String, message: DynamicMessage): Option[(FieldDescriptor, AnyRef)] = {
+  def getField(fieldName: String, message: UncheckedDynamicMessage): Option[(FieldDescriptor, AnyRef)] = {
     val fieldMap = message.getDescriptorForType.getFields.asScala
       .groupBy(_.getName.toLowerCase(Locale.ROOT))
       .mapValues(_.toSeq)
@@ -181,7 +181,7 @@ case class StatsProtobuf(protobuf_bytes: Expression, path: Expression, msgName: 
     var dynamicMessage = if (messageCahceMap.contains(input)) {
       messageCahceMap(input)
     } else {
-      val result = DynamicMessage.parseFrom(descriptor.get, protoBinary)
+      val result = UncheckedDynamicMessage.parseFrom(descriptor.get, protoBinary)
       messageCahceMap.clear()
       messageCahceMap.put(input, result)
       result
@@ -196,7 +196,7 @@ case class StatsProtobuf(protobuf_bytes: Expression, path: Expression, msgName: 
         return null
       }
       try {
-        dynamicMessage = fieldOption.get._2.asInstanceOf[DynamicMessage]
+        dynamicMessage = fieldOption.get._2.asInstanceOf[UncheckedDynamicMessage]
       } catch {
         case e: Throwable =>
           return null
@@ -204,7 +204,7 @@ case class StatsProtobuf(protobuf_bytes: Expression, path: Expression, msgName: 
       index += 1
     }
     val leafPathSeq = pathSeq.slice(printToIndex, pathSeq.size)
-    def getMessageFieldSizeMap(dynamicMessage: DynamicMessage):Map[String,Int]={
+    def getMessageFieldSizeMap(dynamicMessage: UncheckedDynamicMessage):Map[String,Int]={
       dynamicMessage.getDescriptorForType.getFields.asScala.map{
         field=>
           val size= if(! fieldSetted(dynamicMessage,field)) 0 else {
@@ -225,7 +225,7 @@ case class StatsProtobuf(protobuf_bytes: Expression, path: Expression, msgName: 
         //dynamicMessage
         if (fieldOption.get._1.getJavaType eq FieldDescriptor.JavaType.MESSAGE)
           {
-            getMessageFieldSizeMap(fieldOption.get._2.asInstanceOf[DynamicMessage])
+            getMessageFieldSizeMap(fieldOption.get._2.asInstanceOf[UncheckedDynamicMessage])
           }else{
            Map(fieldOption.get._1.getName->ProtobufStatsUtils.computeFieldSize(fieldOption.get._1,fieldOption.get._2))
         }

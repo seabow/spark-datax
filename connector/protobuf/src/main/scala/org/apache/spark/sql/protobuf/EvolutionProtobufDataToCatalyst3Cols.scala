@@ -17,7 +17,7 @@
 package org.apache.spark.sql.protobuf
 
 import com.google.protobuf.Descriptors.Descriptor
-import com.google.protobuf.{DynamicMessage, TypeRegistry}
+import com.google.protobuf.{UncheckedDynamicMessage, TypeRegistry}
 import org.apache.spark.sql.catalyst.expressions.codegen.{CodeGenerator, CodegenContext, ExprCode}
 import org.apache.spark.sql.catalyst.expressions.{ExpectsInputTypes, Expression, SpecificInternalRow, TernaryExpression}
 import org.apache.spark.sql.catalyst.util.{FailFastMode, ParseMode, PermissiveMode}
@@ -87,7 +87,7 @@ private[sql] case class EvolutionProtobufDataToCatalyst3Cols(
     }
   }
 
-  @transient private var result: DynamicMessage = _
+  @transient private var result: UncheckedDynamicMessage = _
 
   @transient private lazy val parseMode: ParseMode = {
     val mode = protobufOptions.parseMode
@@ -135,7 +135,7 @@ private[sql] case class EvolutionProtobufDataToCatalyst3Cols(
       if(!messageDescriptorMap.contains(messageDescriptorMapKey)){
         loadNewProtoVersion(messageDescriptorMapKey._1,messageDescriptorMapKey._2)
       }
-      result = DynamicMessage.parseFrom(messageDescriptorMap(messageDescriptorMapKey), binary)
+      result = UncheckedDynamicMessage.parseFrom(messageDescriptorMap(messageDescriptorMapKey), binary)
       // If the Java class is available, it is likely more efficient to parse with it than using
       // DynamicMessage. Can consider it in the future if parsing overhead is noticeable.
 
